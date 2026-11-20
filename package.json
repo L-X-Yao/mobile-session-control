@@ -30,6 +30,7 @@
     "test:cli": "node --test --test-concurrency=1 packages/cli/test/*.test.mjs",
     "test:coverage": "node --test --test-concurrency=1 --test-timeout=120000 --experimental-test-coverage packages/cli/test/*.test.mjs",
     "test:soak": "node scripts/soak.mjs",
+    "backup:state": "node scripts/backup-state.mjs",
     "validate:profiles": "node packages/cli/src/providers/validate-cli.mjs examples/providers",
     "demo:m1": "node packages/cli/src/demos/m1-demo.mjs",
     "demo:web": "node packages/cli/src/demos/m1-web-demo.mjs",

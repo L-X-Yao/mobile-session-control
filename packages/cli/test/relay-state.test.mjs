@@ -215,13 +215,12 @@ test('rotated tokens keep their new issuance time across a restart', async (t) =
     const dir = stateDir();
     t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
     const stateFile = path.join(dir, 'relay.json');
-    const ttl = 1000;
+    const ttl = 60_000;
     let relay = await createRelay({
         port: 0, providers: PROVIDERS, stateFile, tokenTtlMs: ttl,
     });
     const pairToken = await pair(relay);
     const session = await createSession(relay, pairToken);
-    await new Promise((resolve) => setTimeout(resolve, 700));
     const rotatedPair = await call(`${relay.url}/v1/tokens/renew`, {
         token: pairToken, method: 'POST',
     });
@@ -232,17 +231,29 @@ test('rotated tokens keep their new issuance time across a restart', async (t) =
     assert.equal(rotatedClient.status, 200);
     await relay.close();
 
-    // Restart at about the rotation time. The old tokens would expire at
-    // 1000 ms; the rotated tokens must live until roughly 700 + 1000 ms.
+    // The rotation time is persisted, not the earlier issuance time.
+    const state = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+    const now = Date.now();
+    assert.ok(now - state.pairIssuedAt < 10_000);
+    const restored = state.sessions.find((item) => item.id === session.sessionId);
+    assert.ok(now - restored.clientTokenIssuedAt < 10_000);
+
+    // A restart keeps the rotated tokens valid.
     relay = await createRelay({ port: 0, providers: PROVIDERS, stateFile, tokenTtlMs: ttl });
-    t.after(() => relay.close());
     assert.equal((await call(`${relay.url}/v1/sessions`, {
         token: rotatedPair.body.token,
     })).status, 200);
     assert.equal((await call(`${relay.url}/v1/sessions/${session.sessionId}`, {
         token: rotatedClient.body.token,
     })).status, 200);
-    await new Promise((resolve) => setTimeout(resolve, 1200));
+    await relay.close();
+
+    // Expire them deterministically instead of sleeping against the wall clock.
+    state.pairIssuedAt = now - 2 * ttl;
+    restored.clientTokenIssuedAt = now - 2 * ttl;
+    fs.writeFileSync(stateFile, `${JSON.stringify(state)}\n`);
+    relay = await createRelay({ port: 0, providers: PROVIDERS, stateFile, tokenTtlMs: ttl });
+    t.after(() => relay.close());
     const expiredPair = await call(`${relay.url}/v1/sessions`, {
         token: rotatedPair.body.token,
     });

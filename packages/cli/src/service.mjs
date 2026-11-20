@@ -10,6 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRelay } from '../../server/src/relay.mjs';
+import { createEventLogger } from './service/event-log.mjs';
 import { startSessionManager } from './session/manager.mjs';
 import {
     loadPhase9Config,
@@ -118,6 +119,12 @@ export function loadServiceConfig(configPath) {
     const stateKeyFile = optionalAbsolute(parsed.stateKeyFile, 'STATE_KEY_FILE');
     const pairingFile = optionalAbsolute(parsed.pairingFile, 'PAIRING_FILE');
     const eventLog = optionalAbsolute(parsed.eventLog, 'EVENT_LOG');
+    const eventLogMaxBytes = integerOption(
+        parsed.eventLogMaxBytes, 'EVENT_LOG_MAX_BYTES', 0, 1000000000,
+    ) ?? 10 * 1024 * 1024;
+    const eventLogKeep = integerOption(
+        parsed.eventLogKeep, 'EVENT_LOG_KEEP', 0, 10,
+    ) ?? 2;
     if (stateKeyFile && !stateFile) throw new Error('STATE_KEY_WITHOUT_STATE');
     if (stateFile && pairingFile
         && !pathInside(path.dirname(stateFile), pairingFile)) {
@@ -138,6 +145,8 @@ export function loadServiceConfig(configPath) {
         stateKeyFile,
         pairingFile,
         eventLog,
+        eventLogMaxBytes,
+        eventLogKeep,
     };
     if (parsed.mode === 'fake') {
         const provider = validateProvider(parsed.provider);
@@ -152,33 +161,6 @@ export function loadServiceConfig(configPath) {
     // ProtectHome=read-only sandbox.
     if (!stateFile) throw new Error('SERVICE_REAL_STATE_REQUIRED');
     return { ...common, phase9Config };
-}
-
-function makeEventLogger(file) {
-    if (!file) return null;
-    fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
-    if (fs.existsSync(file)) {
-        const stat = fs.statSync(file);
-        if (!stat.isFile() || (stat.mode & 0o077) !== 0
-            || (typeof process.getuid === 'function' && stat.uid !== process.getuid())) {
-            throw new Error('SERVICE_EVENT_LOG_NOT_PRIVATE');
-        }
-    } else {
-        const handle = fs.openSync(file, 'a', 0o600);
-        fs.closeSync(handle);
-    }
-    return ({ session, event }) => {
-        try {
-            fs.appendFileSync(file, `${JSON.stringify({
-                at: new Date().toISOString(),
-                sessionId: session.sessionId,
-                provider: session.provider?.id,
-                event,
-            })}\n`, { mode: 0o600 });
-        } catch {
-            // Evidence logging must not stop the host worker.
-        }
-    };
 }
 
 function writePairingFile(file, relay) {
@@ -254,7 +236,10 @@ export async function runService(config) {
         providers = phase9ProviderCatalog(phase.profiles);
         resolveHost = makeRealHostResolver({
             ...phase,
-            onHostEvent: makeEventLogger(config.eventLog),
+            onHostEvent: createEventLogger(config.eventLog, {
+                maxBytes: config.eventLogMaxBytes,
+                keep: config.eventLogKeep,
+            }),
         });
     }
     let relay = null;

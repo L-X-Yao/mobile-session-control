@@ -2,7 +2,14 @@
 // provider is touched.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { blockedStagedFile, isSensitive } from '../../../scripts/workflow-rules.mjs';
+
+const BACKUP = fileURLToPath(new URL('../../../scripts/backup-state.mjs', import.meta.url));
 
 test('workflow rules block nested private paths and non-regular modes', () => {
     assert.equal(
@@ -36,4 +43,31 @@ test('workflow rules mark sensitive source and protocol paths', () => {
     assert.equal(isSensitive('docs/SERVICE.md'), true);
     assert.equal(isSensitive('README.md'), false);
     assert.equal(isSensitive('docs/DEVELOPMENT-WORKFLOW.md'), false);
+});
+
+test('backup script archives state without runs and refuses overwrite', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'msc-backup-'));
+    try {
+        const state = path.join(dir, 'state');
+        fs.mkdirSync(path.join(state, 'runs'), { recursive: true });
+        fs.writeFileSync(path.join(state, 'state.json'), '{}');
+        fs.writeFileSync(path.join(state, 'state.key'), 'k');
+        fs.writeFileSync(path.join(state, 'runs', 'work.txt'), 'x');
+        const out = path.join(dir, 'backup.tgz');
+        const first = spawnSync(process.execPath, [
+            BACKUP, '--state-dir', state, '--out', out,
+        ], { encoding: 'utf8' });
+        assert.equal(first.status, 0);
+        assert.equal(fs.statSync(out).mode & 0o777, 0o600);
+        const list = spawnSync('tar', ['-tzf', out], { encoding: 'utf8' }).stdout;
+        assert.match(list, /state\.json/);
+        assert.match(list, /state\.key/);
+        assert.doesNotMatch(list, /runs/);
+        const second = spawnSync(process.execPath, [
+            BACKUP, '--state-dir', state, '--out', out,
+        ], { encoding: 'utf8' });
+        assert.equal(second.status, 2);
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
 });

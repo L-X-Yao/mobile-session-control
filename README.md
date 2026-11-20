@@ -117,7 +117,8 @@ file and a separate real-run confirmation, and a message sent from its page may
 consume provider quota. See `docs/PHASE9-RUNBOOK.md`.
 
 `packages/cli/src/service.mjs` is the durable relay + manager entrypoint for a
-systemd user unit. See `docs/SERVICE.md` and `deploy/msc-relay.service.example`.
+systemd user unit. See `docs/SERVICE.md`, `docs/BACKUP.md` and
+`deploy/msc-relay.service.example`.
 
 The real Claude Code adapter test is opt-in because the Agent SDK and `claude`
 executable are external:

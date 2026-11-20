@@ -27,6 +27,8 @@ inside the config are rejected. Required and optional fields:
 | `stateKeyFile` | no | 32-byte key file (64 hex or base64), mode 0600; encrypts the state |
 | `pairingFile` | no | Absolute path for a mode-0600 `{ url, paired, pairingCode, at }` file |
 | `eventLog` | real only | Absolute JSONL host-event log, created mode 0600 |
+| `eventLogMaxBytes` | no | Rotate the event log at this size, 0-1000000000 (`0` disables), default 10 MiB |
+| `eventLogKeep` | no | Rotated archives kept as `<file>.1..N`, 0-10 (`0` truncates), default 2 |
 | `tokenTtlMs` | no | Token lifetime; `0` disables expiry, default `0` |
 | `rateLimit` | no | Requests per token/address per window; `0` disables, default `0` |
 | `rateLimitWindowMs` | no | Rate-limit window, default 1000 |
@@ -195,8 +197,10 @@ entry path only; `127.0.0.1:8787` keeps running either way.
   separate private-network proxy decision.
 - One process and one state file. This is not a multi-writer database, and the
   state file is rewritten in full on each change.
-- `eventLog` appends and is never rotated by the service; manage retention
-  outside it. It can contain assistant text and permission summaries.
+- `eventLog` rotates by size (`eventLogMaxBytes`, default 10 MiB;
+  `eventLogKeep`, default 2). It can contain assistant text and permission
+  summaries; keep the directory private. See `docs/BACKUP.md` for backup and
+  restore.
 - A consumed pairing code has no recovery path; remove the state file to
   re-pair, which discards sessions.
 - Token rotation is single-use. Tabs sharing one stored token serialize renewal

@@ -11,6 +11,10 @@
 - New `npm run test:coverage` (Node built-in coverage); CI soak runs with
   concurrency 4.
 - New tests: persist fault injection, concurrent token renewal.
+- The event log rotates by size (`eventLogMaxBytes`, `eventLogKeep`); the
+  service no longer grows it without bound.
+- `npm run backup:state` archives the state directory without `runs/`, and
+  `docs/BACKUP.md` documents backup, restore and re-pairing.
 
 ## 0.1.1 — 2026-11-20
 
