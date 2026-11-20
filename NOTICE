@@ -1,0 +1,50 @@
+# Notices
+
+This repository's original source is licensed under the MIT License; see
+`LICENSE`.
+
+## External components
+
+These components are not bundled in this repository. They are installed or
+provided separately by the user and remain under their own licenses.
+
+| Component | License | Role |
+|---|---|---|
+| `happy` | MIT | Upstream client, external runtime dependency; not imported here |
+| `happy-server-self-host` | MIT | Upstream server, external runtime dependency |
+| `@slopus/happy-wire` | MIT | Upstream wire package, external runtime dependency |
+| `tweetnacl` | Unlicense | Upstream dependency, external runtime dependency |
+| `socket.io-client` | MIT | Upstream dependency, external runtime dependency |
+| Claude Agent SDK | separately licensed | External dependency, not bundled |
+| Claude Code executable | separately licensed | External dependency, not bundled |
+
+## Happy MIT license
+
+The upstream `happy-server-self-host` license file states:
+
+```text
+MIT License
+
+Copyright (c) 2026 Happy Coder Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+No upstream Happy source has been imported into this repository. If it is
+imported later, its paths, LICENSE and NOTICE requirements must be preserved.

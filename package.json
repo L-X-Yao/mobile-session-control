@@ -1,0 +1,22 @@
+{
+  "name": "mobile-session-control",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node scripts/verify.mjs",
+    "verify": "node scripts/verify.mjs",
+    "precommit": "node scripts/precommit.mjs",
+    "review:packet": "node scripts/review-packet.mjs",
+    "hooks:install": "node scripts/install-hooks.mjs",
+    "test:cli": "node --test --test-concurrency=1 packages/cli/test/*.test.mjs",
+    "test:soak": "node scripts/soak.mjs",
+    "validate:profiles": "node packages/cli/src/providers/validate-cli.mjs examples/providers",
+    "demo:m1": "node packages/cli/src/m1-demo.mjs",
+    "demo:web": "node packages/cli/src/m1-web-demo.mjs",
+    "demo:real": "node packages/cli/src/phase9-web-demo.mjs"
+  }
+}

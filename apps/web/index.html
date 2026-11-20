@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#101418">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Mobile Session Control</title>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" href="/icons/icon-192.png" type="image/png">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <header>
+        <div>
+            <h1>Mobile Session Control</h1>
+            <p id="status">正在连接</p>
+        </div>
+        <div class="header-actions">
+            <button id="back" type="button" class="secondary" hidden>返回</button>
+            <button id="stop" type="button" class="danger" hidden>Stop</button>
+            <button id="close" type="button" class="secondary" hidden>关闭会话</button>
+        </div>
+    </header>
+
+    <main>
+        <section id="pair-view" class="view pair-view">
+            <div class="panel">
+                <h2>配对</h2>
+                <p class="hint">输入电脑端显示的配对码。配对码只使用一次。</p>
+                <form id="pair-form">
+                    <input id="pair-code" type="text" inputmode="text" autocomplete="one-time-code"
+                           placeholder="配对码" required>
+                    <button id="pair-button" type="submit">配对</button>
+                </form>
+                <p id="pair-error" class="error" role="alert"></p>
+            </div>
+        </section>
+
+        <section id="sessions-view" class="view sessions-view" hidden>
+            <div class="section-head">
+                <h2>会话</h2>
+                <button id="refresh" type="button" class="secondary">刷新</button>
+            </div>
+            <form id="create-form" class="create-form">
+                <label for="provider">Provider</label>
+                <select id="provider"></select>
+                <button type="submit">新建会话</button>
+            </form>
+            <p class="hint">选择 Provider 后新建会话；发送消息才会调用对应服务。</p>
+            <div id="session-list" class="session-list"></div>
+        </section>
+
+        <section id="chat-view" class="view chat-view" hidden>
+            <div id="chat" class="chat" aria-live="polite"></div>
+            <form id="composer" class="composer">
+                <textarea id="input" rows="2" placeholder="输入消息，Enter 发送" autocomplete="off"></textarea>
+                <button id="send" type="submit">发送</button>
+            </form>
+        </section>
+    </main>
+
+    <script src="/app.js"></script>
+</body>
+</html>

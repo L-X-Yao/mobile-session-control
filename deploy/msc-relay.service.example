@@ -1,0 +1,43 @@
+# systemd --user unit template for the Mobile Session Control relay.
+#
+# Copy to ~/.config/systemd/user/msc-relay.service and replace:
+#   @NODE@       absolute node executable (command -v node)
+#   @REPO@       absolute repository path
+#   @CONFIG@     absolute private service config path (mode 0600)
+#   @STATE_DIR@  writable private directory for state, key, pairing and logs
+#
+# Phase 9 rejects a real-mode baseDir under ~/.local, ~/.config, ~/.cache,
+# ~/.ssh or ~/.claude. For real mode use a separate writable root (for example
+# $HOME/msc-service) and list every writable root in ReadWritePaths, separated
+# by spaces.
+#
+# This unit binds the loopback relay only. Remote access must terminate at a
+# private-network proxy such as `tailscale serve`; do not expose the relay
+# directly. See docs/SERVICE.md before installing.
+[Unit]
+Description=Mobile Session Control loopback relay
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=@NODE@ @REPO@/packages/cli/src/service.mjs
+Environment=MSC_SERVICE_CONFIG=@CONFIG@
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec=30
+KillMode=mixed
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=@STATE_DIR@
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "kimi",
+  "label": "Kimi",
+  "baseUrl": "https://api.moonshot.ai/anthropic",
+  "model": "REPLACE_WITH_KIMI_MODEL",
+  "effort": "low",
+  "permissionMode": "default",
+  "credential": {
+    "source": "env",
+    "name": "MOONSHOT_API_KEY"
+  },
+  "transport": {
+    "type": "anthropic-compatible-sse"
+  },
+  "limits": {
+    "maxModelTurns": 3,
+    "maxReservations": 3,
+    "maxAttempts": 1
+  }
+}

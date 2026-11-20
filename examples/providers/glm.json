@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "glm",
+  "label": "GLM",
+  "baseUrl": "https://open.bigmodel.cn/api/anthropic",
+  "model": "REPLACE_WITH_GLM_MODEL",
+  "effort": "low",
+  "permissionMode": "default",
+  "credential": {
+    "source": "env",
+    "name": "ZHIPUAI_API_KEY"
+  },
+  "transport": {
+    "type": "anthropic-compatible-sse"
+  },
+  "limits": {
+    "maxModelTurns": 3,
+    "maxReservations": 3,
+    "maxAttempts": 1
+  }
+}

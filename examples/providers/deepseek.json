@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "deepseek",
+  "label": "DeepSeek",
+  "baseUrl": "https://api.deepseek.com/anthropic",
+  "model": "REPLACE_WITH_DEEPSEEK_MODEL",
+  "effort": "low",
+  "permissionMode": "default",
+  "credential": {
+    "source": "env",
+    "name": "DEEPSEEK_API_KEY"
+  },
+  "transport": {
+    "type": "anthropic-compatible-sse"
+  },
+  "limits": {
+    "maxModelTurns": 3,
+    "maxReservations": 3,
+    "maxAttempts": 1
+  }
+}

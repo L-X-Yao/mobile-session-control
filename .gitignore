@@ -1,0 +1,41 @@
+# Local development
+.local/
+node_modules/
+dist/
+build/
+.gradle/
+.cxx/
+.idea/
+.DS_Store
+local.properties
+
+# Credentials and device signing
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.jks
+*.keystore
+*token*
+*secret*
+
+# Private runtime material
+evidence/
+state/
+logs/
+runtime/
+backups/
+pgdata/
+*.log
+*.sqlite
+*.sqlite3
+*.db
+*.tar
+*.tgz
+
+# Test output
+coverage/
+test-results/
+playwright-report/
