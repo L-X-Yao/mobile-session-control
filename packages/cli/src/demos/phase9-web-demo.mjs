@@ -7,15 +7,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRelay } from '../../server/src/relay.mjs';
-import { startSessionManager } from './session/manager.mjs';
+import { createRelay } from '../../../server/src/relay.mjs';
+import { startSessionManager } from '../session/manager.mjs';
 import {
     loadPhase9Config,
     makeRealHostResolver,
     phase9ProviderCatalog,
-} from './session/real-host.mjs';
+} from '../session/real-host.mjs';
 
-const WEB_DIR = fileURLToPath(new URL('../../../apps/web', import.meta.url));
+const WEB_DIR = fileURLToPath(new URL('../../../../apps/web', import.meta.url));
 
 async function main() {
     const configPath = process.env.MSC_PHASE9_CONFIG || process.argv[2];

@@ -38,6 +38,12 @@ is supported by the current repository.
 - Transport: loopback or an explicitly approved private network; no public
   listener by default.
 
+### Mobile web client (`apps/web`)
+
+- One classic script (`app.js`) keeps the no-build PWA and the vm-based test
+  harness. Splitting it into ES modules would change the service-worker
+  whitelist and the harness; deferred deliberately.
+
 ### Computer-side daemon and launchers (`packages/cli`)
 
 - Start and supervise provider-scoped sessions.

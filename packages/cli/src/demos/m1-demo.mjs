@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // Offline M1 demo: loopback relay + session worker + fake provider.
 // No real provider, phone or credential is involved.
-import { createRelay } from '../../server/src/relay.mjs';
-import { createFakeProvider } from './testing/fake-provider.mjs';
-import { startSessionWorker } from './m1/worker.mjs';
-import { loadProviderProfile } from './m1/profile.mjs';
+import { createRelay } from '../../../server/src/relay.mjs';
+import { createFakeProvider } from '../testing/fake-provider.mjs';
+import { startSessionWorker } from '../m1/worker.mjs';
+import { loadProviderProfile } from '../m1/profile.mjs';
 
 async function requestJson(url, { token = null, method = 'GET', body = undefined } = {}) {
     const headers = {};

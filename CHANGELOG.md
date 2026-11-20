@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Relay split into `constants`, `http` and `state` modules; the caller now
+  supplies an absolute `webDir` for static serving.
+- `maxEventsPerSession` bounds retained events (default 5000; `0` unlimited).
+- Demo entrypoints moved to `packages/cli/src/demos/`.
+- The empty top-level `tests/` directory was removed; test notes live next to
+  the tests.
+
 ## 0.1.0 — 2026-11-20
 
 First public baseline.

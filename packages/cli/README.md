@@ -1,22 +1,26 @@
 # Computer-side daemon and launchers
 
-Status: security primitives and provider schema implemented; daemon and session
-launchers are not implemented yet.
+Status: implemented for personal use. Offline tests cover the fake host; the
+real path runs the external Claude Agent SDK through private profiles.
 
 ## Implemented
 
 | Module | Purpose |
 |---|---|
+| `src/service.mjs` | Durable relay + session-manager entrypoint for the systemd unit |
 | `src/providers/schema.mjs` | Provider profile validation, loading, template detection and redaction |
 | `src/providers/validate-cli.mjs` | Offline profile validator |
 | `src/security/launcher-guard.mjs` | Argument/binding guard, explicit env allowlist, shell-free wrapper exec; rejects template models, provider keys and endpoint/model overrides |
 | `src/security/allowlist-proxy.mjs` | Loopback CONNECT proxy with exact allowlist, pending-connect cleanup, idempotent settlement and upstream timeout |
 | `src/testing/fake-provider.mjs` | Offline OpenAI- and Anthropic-compatible SSE fake provider; supports hold, abort and follow-up |
 | `src/m1/worker.mjs` | Loopback session worker: poll relay messages, call fake provider, post events |
-| `src/m1-demo.mjs` | Offline M1 demo: relay + worker + fake provider |
+| `src/session/manager.mjs` | One host worker per open session, crash restart and cleanup retry |
 | `src/session/supervisor.mjs` | Fresh run root/env, optional allowlist proxy, launcher preflight and worker lifecycle |
 | `src/session/host.mjs` | JSONL child host: turn/permission/Stop events, process-group cleanup |
 | `src/session/host-worker.mjs` | Bridge host child to relay messages, commands and events |
+| `src/session/real-host.mjs` | Private Phase 9 profile loader and host resolver |
+| `src/session/claude-host*.mjs` | Claude Agent SDK adapter and child process |
+| `src/demos/*.mjs` | Offline M1, web-client and Phase 9 demos |
 
 ## Tests
 
@@ -56,11 +60,13 @@ directories with restrictive permissions, and prevent symlink or directory swaps
 between validation and exec. This check-to-spawn race is a documented design
 residual, not covered by the guard's unit tests.
 
-## Still to build
+## Residuals
 
-- Real Claude/provider process launcher and long-lived daemon.
-- Relay reconnect/backoff and multi-session supervision.
-- Real-provider profiles behind an explicit authorization flow.
+- Real-provider and real-phone evidence is private and not bundled.
+- The check-to-spawn race and cgroup/PID-namespace escapes remain design
+  residuals.
+- The M1 worker (openai/anthropic fake SSE) and the session host are separate
+  paths; the M1 path is used by demos and offline tests.
 
 Provider keys stay in the host or wrapper, never in argv, logs or Git. The
 Claude Agent SDK and Claude executable remain external dependencies.
