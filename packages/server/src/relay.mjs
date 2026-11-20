@@ -13,7 +13,7 @@ import {
     MAX_RATE_BUCKETS, STATIC_FILES, STATIC_SECURITY_HEADERS, TRANSPORTS, TURN_STATUSES,
 } from './relay/constants.mjs';
 import {
-    bearerToken, isText, parseAfter, readBodyOrRespond, safeEqual, sendJson,
+    bearerToken, isText, parseAfter, parseLimit, readBodyOrRespond, safeEqual, sendJson,
 } from './relay/http.mjs';
 import {
     STATE_VERSION, encryptState, hydrateSession, loadStateFile, loadStateKeyFile,
@@ -194,6 +194,7 @@ export async function createRelay({
     providers = [],
     maxClosedSessions = 100,
     maxEventsPerSession = 5000,
+    persistDelayMs = 0,
     webDir = null,
     stateFile = null,
     stateKeyFile = null,
@@ -246,6 +247,8 @@ export async function createRelay({
         || maxClosedSessions > 1000) throw new Error('INVALID_MAX_CLOSED_SESSIONS');
     if (!Number.isInteger(maxEventsPerSession) || maxEventsPerSession < 0
         || maxEventsPerSession > 1000000) throw new Error('INVALID_MAX_EVENTS');
+    if (!Number.isInteger(persistDelayMs) || persistDelayMs < 0
+        || persistDelayMs > 5000) throw new Error('INVALID_PERSIST_DELAY');
     if (webDir !== null && (typeof webDir !== 'string' || !path.isAbsolute(webDir))) {
         throw new Error('INVALID_WEB_DIR');
     }
@@ -309,6 +312,24 @@ export async function createRelay({
             }
         }
         return bucket.count > rateLimit;
+    }
+
+    // Streamed events arrive in bursts; debounce their snapshot writes while
+    // keeping infrequent security-relevant changes synchronous. close()
+    // flushes any pending write.
+    let persistTimer = null;
+    function schedulePersist() {
+        if (!stateFile) return;
+        if (persistDelayMs === 0) {
+            persist();
+            return;
+        }
+        if (persistTimer) return;
+        persistTimer = setTimeout(() => {
+            persistTimer = null;
+            persist();
+        }, persistDelayMs);
+        persistTimer.unref?.();
     }
 
     function persist() {
@@ -798,7 +819,7 @@ export async function createRelay({
                 // eventId de-duplication keeps working for dropped entries.
                 session.events.splice(0, session.events.length - maxEventsPerSession);
             }
-            persist();
+            schedulePersist();
             sendJson(res, 201, { seq });
             return;
         }
@@ -810,9 +831,20 @@ export async function createRelay({
                 sendJson(res, 400, { error: 'invalid_after' });
                 return;
             }
+            const limit = parseLimit(url);
+            if (limit === null) {
+                sendJson(res, 400, { error: 'invalid_limit' });
+                return;
+            }
+            const filtered = session.events.filter((event) => event.seq > after);
+            const tail = url.searchParams.get('tail') === '1';
+            const events = limit > 0
+                ? (tail ? filtered.slice(-limit) : filtered.slice(0, limit))
+                : filtered;
             sendJson(res, 200, {
                 closed: Boolean(session.closedAt),
-                events: session.events.filter((event) => event.seq > after),
+                events,
+                hasMore: events.length < filtered.length,
             });
             return;
         }
@@ -847,6 +879,10 @@ export async function createRelay({
         tokenTtlMs,
         rateLimit,
         close: () => new Promise((resolve) => {
+            if (persistTimer) {
+                clearTimeout(persistTimer);
+                persistTimer = null;
+            }
             persist();
             server.close(() => resolve());
             server.closeAllConnections?.();

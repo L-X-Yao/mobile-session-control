@@ -32,6 +32,7 @@ inside the config are rejected. Required and optional fields:
 | `rateLimitWindowMs` | no | Rate-limit window, default 1000 |
 | `maxClosedSessions` | no | Retained closed sessions, 0-1000, default 100 |
 | `maxEventsPerSession` | no | Events kept per session, 0-1000000 (`0` unlimited), default 5000; the newest are kept and `seq` stays monotonic |
+| `persistDelayMs` | no | Debounce for event-driven snapshot writes, 0-5000 ms, default 250; `0` writes synchronously and `close()` always flushes |
 
 The state snapshot contains session tokens and message/event content. When
 `stateKeyFile` is set the snapshot is AES-256-GCM ciphertext; the service refuses

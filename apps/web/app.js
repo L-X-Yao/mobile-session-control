@@ -616,8 +616,9 @@ async function openSession(session) {
         sessionId: session.sessionId,
         clientToken: local.clientToken,
         provider: local.provider || session.provider,
-        // Replay from the beginning so a reopened chat recovers history and a
-        // still-pending approval card. The relay is in-memory and loopback.
+        // Replay the most recent history page so a reopened chat recovers
+        // context and a still-pending approval card without pulling an
+        // unbounded event list.
         lastSeq: 0,
         closed: Boolean(metadata?.closed ?? session.closed),
         pendingPermission: metadata?.pendingPermission || null,
@@ -663,18 +664,22 @@ async function loadHistory(session) {
             request(`/v1/sessions/${session.sessionId}/messages?after=0`, {
                 token: session.clientToken,
             }),
-            request(`/v1/sessions/${session.sessionId}/events?after=0`, {
+            request(`/v1/sessions/${session.sessionId}/events?after=0&limit=200&tail=1`, {
                 token: session.clientToken,
             }),
         ]);
         if (active !== session) return false;
+        const events = Array.isArray(eventsData?.events) ? eventsData.events : [];
+        const earliest = events.length > 0 && typeof events[0].at === 'string' ? events[0].at : null;
+        const truncated = eventsData?.hasMore === true && earliest !== null;
         const items = [];
         for (const message of Array.isArray(messagesData?.messages) ? messagesData.messages : []) {
             if (!message || message.role !== 'user' || typeof message.content !== 'string'
                 || typeof message.at !== 'string') continue;
+            if (truncated && message.at < earliest) continue;
             items.push({ at: message.at, order: 0, render: () => bubble(message.content, 'user') });
         }
-        for (const event of Array.isArray(eventsData?.events) ? eventsData.events : []) {
+        for (const event of events) {
             if (!event || typeof event.at !== 'string') continue;
             items.push({ at: event.at, order: 1, render: () => applyEvent(session, event) });
         }
@@ -711,7 +716,7 @@ async function pollEvents() {
     let delay = 500;
     try {
         const data = await request(
-            `/v1/sessions/${session.sessionId}/events?after=${session.lastSeq}`,
+            `/v1/sessions/${session.sessionId}/events?after=${session.lastSeq}&limit=500`,
             { token: session.clientToken },
         );
         if (active !== session || session.closed) return;
@@ -734,7 +739,9 @@ async function pollEvents() {
         }
         if (!applied) setStatus(idleStatus(session));
         session.authFailures = 0;
-        delay = 500;
+        // A capped page means more events are waiting; drain immediately
+        // instead of waiting out the poll interval.
+        delay = data.hasMore === true ? 0 : 500;
     } catch (error) {
         if (active !== session) return;
         if (error.status === 401 || error.status === 403) {

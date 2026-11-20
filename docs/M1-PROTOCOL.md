@@ -77,12 +77,16 @@ message/event history readable by its client and worker tokens until eviction.
 | POST | `/v1/sessions/:id/messages` | client | `{ content }` | `{ seq }` |
 | GET | `/v1/sessions/:id/messages?after=N` | worker or client | none | `{ closed, messages: [...] }`; the client uses it to replay its own bubbles |
 | POST | `/v1/sessions/:id/events` | worker | `{ type, ... }` | `{ seq }` |
-| GET | `/v1/sessions/:id/events?after=N` | client | none | `{ closed, events: [...] }` |
+| GET | `/v1/sessions/:id/events?after=N&limit=M&tail=1` | client | none | `{ closed, events: [...], hasMore }` |
 | POST | `/v1/sessions/:id/commands` | client | `{ type, ... }` | `{ seq }` |
 | GET | `/v1/sessions/:id/commands?after=N` | worker | none | `{ closed, commands: [...] }` |
 | POST | `/v1/sessions/:id/close` | client | none | `{ sessionId, closed, closedAt }` |
 
 Pagination: `after=N` is exclusive; responses contain entries with `seq > N`.
+`limit=M` (1-1000) caps the returned events; `tail=1` returns the newest M of
+the filtered set instead of the oldest. `hasMore` is true when events exist
+outside the returned window. The client loads the latest 200 events on reopen
+and drains capped poll pages immediately.
 Session metadata includes `provider`, `closed`, `pendingPermission`, message/event
 counts and the last sequence numbers. `GET /v1/sessions` rows use the same shape;
 manager-authenticated rows additionally include `workerToken`.
@@ -94,7 +98,7 @@ manager-authenticated rows additionally include `workerToken`.
 | 200 | none | health, pair, close, session/message/event reads |
 | 200 | `duplicate: true` | Event POST whose `eventId` was already stored; returns the original sequence |
 | 201 | none | session, message or event created |
-| 400 | `provider_required`, `invalid_provider_*`, `invalid_message_content`, `invalid_event_*`, `invalid_permission_request`, `invalid_question_request`, `invalid_command_*` (including `invalid_command_answers`), `invalid_turn_*`, `invalid_after`, `invalid_body`, `INVALID_JSON`, `BODY_NOT_OBJECT` | Validation failure |
+| 400 | `provider_required`, `invalid_provider_*`, `invalid_message_content`, `invalid_event_*`, `invalid_permission_request`, `invalid_question_request`, `invalid_command_*` (including `invalid_command_answers`), `invalid_turn_*`, `invalid_after`, `invalid_limit`, `invalid_body`, `INVALID_JSON`, `BODY_NOT_OBJECT` | Validation failure |
 | 401 | `invalid_pairing_code`, `unauthorized`, `token_expired` | Pairing, missing/unknown/revoked bearer, or expired token |
 | 403 | `forbidden` | Wrong session or role token |
 | 404 | `not_found`, `session_not_found` | Unknown route or session |

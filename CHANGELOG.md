@@ -5,6 +5,10 @@
 - Relay split into `constants`, `http` and `state` modules; the caller now
   supplies an absolute `webDir` for static serving.
 - `maxEventsPerSession` bounds retained events (default 5000; `0` unlimited).
+- Event reads accept `limit`/`tail` with `hasMore`; the client loads the latest
+  200 events on reopen and drains capped poll pages.
+- Event-driven state snapshots are debounced (`persistDelayMs`, default 250 ms
+  in the service) and flushed on close.
 - Demo entrypoints moved to `packages/cli/src/demos/`.
 - The empty top-level `tests/` directory was removed; test notes live next to
   the tests.

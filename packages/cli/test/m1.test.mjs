@@ -195,6 +195,65 @@ test('relay keeps at most maxEventsPerSession events', async (t) => {
     );
 });
 
+test('relay paginates events with limit and tail', async (t) => {
+    const relay = await createRelay({ port: 0 });
+    t.after(() => relay.close());
+    const { token: pairToken } = await pair(relay);
+    const session = await createSession(relay, pairToken);
+    const eventsUrl = `${relay.url}/v1/sessions/${session.sessionId}/events`;
+    for (let index = 1; index <= 3; index += 1) {
+        await requestJson(eventsUrl, {
+            token: session.workerToken,
+            method: 'POST',
+            body: { type: 'assistant-message', content: `m${index}` },
+        });
+    }
+    const page = await requestJson(`${eventsUrl}?after=0&limit=2`, {
+        token: session.clientToken,
+    });
+    assert.deepEqual(page.events.map((item) => item.content), ['m1', 'm2']);
+    assert.equal(page.hasMore, true);
+    const tail = await requestJson(`${eventsUrl}?after=0&limit=2&tail=1`, {
+        token: session.clientToken,
+    });
+    assert.deepEqual(tail.events.map((item) => item.content), ['m2', 'm3']);
+    assert.equal(tail.hasMore, true);
+    const full = await requestJson(`${eventsUrl}?after=0`, { token: session.clientToken });
+    assert.equal(full.hasMore, false);
+    await assert.rejects(
+        () => requestJson(`${eventsUrl}?after=0&limit=0`, { token: session.clientToken }),
+        /invalid_limit/,
+    );
+});
+
+test('relay debounces event snapshots and flushes them on close', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'msc-persist-'));
+    const file = path.join(dir, 'state.json');
+    const relay = await createRelay({
+        port: 0, stateFile: file, persistDelayMs: 5000,
+    });
+    let closed = false;
+    try {
+        const { token: pairToken } = await pair(relay);
+        const session = await createSession(relay, pairToken);
+        await requestJson(`${relay.url}/v1/sessions/${session.sessionId}/events`, {
+            token: session.workerToken,
+            method: 'POST',
+            body: { type: 'assistant-message', content: 'debounced' },
+        });
+        const before = JSON.parse(fs.readFileSync(file, 'utf8'));
+        assert.equal(before.sessions[0].events.length, 0);
+        await relay.close();
+        closed = true;
+        const after = JSON.parse(fs.readFileSync(file, 'utf8'));
+        assert.equal(after.sessions[0].events.length, 1);
+        assert.equal(after.sessions[0].events[0].content, 'debounced');
+    } finally {
+        if (!closed) await relay.close().catch(() => {});
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
+
 test('pair, client and worker tokens are scoped', async (t) => {
     const relay = await createRelay({ port: 0 });
     t.after(() => relay.close());

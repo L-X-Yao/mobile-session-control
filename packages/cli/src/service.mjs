@@ -111,6 +111,9 @@ export function loadServiceConfig(configPath) {
     const maxEventsPerSession = integerOption(
         parsed.maxEventsPerSession, 'MAX_EVENTS_PER_SESSION', 0, 1000000,
     ) ?? 5000;
+    const persistDelayMs = integerOption(
+        parsed.persistDelayMs, 'PERSIST_DELAY_MS', 0, 5000,
+    ) ?? 250;
     const stateFile = optionalAbsolute(parsed.stateFile, 'STATE_FILE');
     const stateKeyFile = optionalAbsolute(parsed.stateKeyFile, 'STATE_KEY_FILE');
     const pairingFile = optionalAbsolute(parsed.pairingFile, 'PAIRING_FILE');
@@ -130,6 +133,7 @@ export function loadServiceConfig(configPath) {
         rateLimitWindowMs,
         maxClosedSessions,
         maxEventsPerSession,
+        persistDelayMs,
         stateFile,
         stateKeyFile,
         pairingFile,
@@ -270,6 +274,7 @@ export async function runService(config) {
             rateLimitWindowMs: config.rateLimitWindowMs,
             maxClosedSessions: config.maxClosedSessions,
             maxEventsPerSession: config.maxEventsPerSession,
+            persistDelayMs: config.persistDelayMs,
             webDir: WEB_DIR,
         });
         manager = await startSessionManager({

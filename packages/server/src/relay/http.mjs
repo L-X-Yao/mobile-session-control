@@ -109,3 +109,11 @@ export function parseAfter(url) {
 export function isText(value, maxLength) {
     return typeof value === 'string' && value.length > 0 && value.length <= maxLength;
 }
+
+export function parseLimit(url, max = 1000) {
+    const raw = url.searchParams.get('limit');
+    if (raw === null) return 0;
+    if (!/^\d+$/.test(raw)) return null;
+    const value = Number(raw);
+    return Number.isSafeInteger(value) && value >= 1 && value <= max ? value : null;
+}
