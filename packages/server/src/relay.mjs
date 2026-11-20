@@ -1,18 +1,16 @@
-// M1 loopback relay scaffold.
+// Loopback relay: pairing, sessions, events, approvals and optional state.
 //
-// HTTP JSON, loopback-only, in-memory. This is not the Happy wire protocol and
-// not production authentication. It proves the relay -> CLI worker -> fake
-// provider path without a real phone, provider or credential.
+// HTTP JSON, loopback-only. This is not the Happy wire protocol and not
+// production authentication. The caller supplies the web client directory;
+// the relay has no knowledge of the repository layout.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 const MAX_BODY_BYTES = 1024 * 1024;
 const MAX_PERMISSION_DETAIL_CHARS = 2000;
 const MAX_ANSWER_CHARS = 200;
-const WEB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../apps/web');
 const STATIC_FILES = new Map([
     ['/', { file: 'index.html', type: 'text/html; charset=utf-8' }],
     ['/index.html', { file: 'index.html', type: 'text/html; charset=utf-8' }],
@@ -455,6 +453,8 @@ export async function createRelay({
     managerToken = null,
     providers = [],
     maxClosedSessions = 100,
+    maxEventsPerSession = 5000,
+    webDir = null,
     stateFile = null,
     stateKeyFile = null,
     onPairingConsumed = null,
@@ -504,6 +504,11 @@ export async function createRelay({
     if (safeEqual(pair, manager)) throw new Error('PAIR_MANAGER_TOKEN_COLLISION');
     if (!Number.isInteger(maxClosedSessions) || maxClosedSessions < 0
         || maxClosedSessions > 1000) throw new Error('INVALID_MAX_CLOSED_SESSIONS');
+    if (!Number.isInteger(maxEventsPerSession) || maxEventsPerSession < 0
+        || maxEventsPerSession > 1000000) throw new Error('INVALID_MAX_EVENTS');
+    if (webDir !== null && (typeof webDir !== 'string' || !path.isAbsolute(webDir))) {
+        throw new Error('INVALID_WEB_DIR');
+    }
     const providerCatalog = normalizeProviderCatalog(providers);
     const sessions = new Map();
     const tokens = new Map();
@@ -622,10 +627,10 @@ export async function createRelay({
         const url = new URL(req.url, 'http://127.0.0.1');
         const parts = routeParts(url.pathname);
 
-        if (req.method === 'GET' && STATIC_FILES.has(url.pathname)) {
+        if (webDir !== null && req.method === 'GET' && STATIC_FILES.has(url.pathname)) {
             const entry = STATIC_FILES.get(url.pathname);
             try {
-                const body = fs.readFileSync(path.join(WEB_DIR, entry.file));
+                const body = fs.readFileSync(path.join(webDir, entry.file));
                 res.writeHead(200, {
                     'content-type': entry.type,
                     'content-length': body.length,
@@ -1048,6 +1053,11 @@ export async function createRelay({
                 session.pendingKind = null;
             }
             session.events.push(event);
+            if (maxEventsPerSession > 0 && session.events.length > maxEventsPerSession) {
+                // Keep the newest events; sequence numbers stay monotonic and
+                // eventId de-duplication keeps working for dropped entries.
+                session.events.splice(0, session.events.length - maxEventsPerSession);
+            }
             persist();
             sendJson(res, 201, { seq });
             return;

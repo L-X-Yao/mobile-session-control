@@ -18,6 +18,7 @@ import {
 } from './session/real-host.mjs';
 
 const FAKE_HOST = fileURLToPath(new URL('./testing/fake-session-host.mjs', import.meta.url));
+const WEB_DIR = fileURLToPath(new URL('../../../apps/web', import.meta.url));
 const EFFORTS = new Set(['low', 'medium', 'high']);
 const TRANSPORTS = new Set(['openai-compatible-sse', 'anthropic-compatible-sse']);
 const DEFAULT_PORT = 8787;
@@ -107,6 +108,9 @@ export function loadServiceConfig(configPath) {
     const maxClosedSessions = integerOption(
         parsed.maxClosedSessions, 'MAX_CLOSED_SESSIONS', 0, 1000,
     ) ?? 100;
+    const maxEventsPerSession = integerOption(
+        parsed.maxEventsPerSession, 'MAX_EVENTS_PER_SESSION', 0, 1000000,
+    ) ?? 5000;
     const stateFile = optionalAbsolute(parsed.stateFile, 'STATE_FILE');
     const stateKeyFile = optionalAbsolute(parsed.stateKeyFile, 'STATE_KEY_FILE');
     const pairingFile = optionalAbsolute(parsed.pairingFile, 'PAIRING_FILE');
@@ -125,6 +129,7 @@ export function loadServiceConfig(configPath) {
         rateLimit,
         rateLimitWindowMs,
         maxClosedSessions,
+        maxEventsPerSession,
         stateFile,
         stateKeyFile,
         pairingFile,
@@ -264,6 +269,8 @@ export async function runService(config) {
             rateLimit: config.rateLimit,
             rateLimitWindowMs: config.rateLimitWindowMs,
             maxClosedSessions: config.maxClosedSessions,
+            maxEventsPerSession: config.maxEventsPerSession,
+            webDir: WEB_DIR,
         });
         manager = await startSessionManager({
             relayUrl: relay.url,

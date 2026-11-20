@@ -13,6 +13,7 @@ Status: offline development hardening, not a 24-hour or production claim.
 | PWA | The service worker caches only an explicit static-shell whitelist; `/v1/` and non-GET requests are never cached. Static responses set CSP/nosniff/no-referrer. |
 | Event retry | Host-worker posts carry an optional `eventId`; relay retries return the original sequence instead of duplicating the event. |
 | Memory bound | Relay retains at most 100 closed sessions by default; older closed sessions are evicted and their session tokens are revoked (401). |
+| Event retention | An open session keeps at most `maxEventsPerSession` events (default 5000); the oldest are dropped while `seq` stays monotonic and `eventId` de-duplication keeps working. |
 | Relay state | Optional `stateFile` snapshot (owner-only 0600, atomic rename) restores tokens, sequences and pending approvals after a restart; the pairing code stays consumed. |
 | Token lifetime | Optional `tokenTtlMs` returns `401 token_expired` for pair/manager/session tokens; default off. |
 | Rate limit | Optional per-token/per-address fixed window returns `429 rate_limited` with `Retry-After`; default off. |

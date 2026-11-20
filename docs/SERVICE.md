@@ -31,6 +31,7 @@ inside the config are rejected. Required and optional fields:
 | `rateLimit` | no | Requests per token/address per window; `0` disables, default `0` |
 | `rateLimitWindowMs` | no | Rate-limit window, default 1000 |
 | `maxClosedSessions` | no | Retained closed sessions, 0-1000, default 100 |
+| `maxEventsPerSession` | no | Events kept per session, 0-1000000 (`0` unlimited), default 5000; the newest are kept and `seq` stays monotonic |
 
 The state snapshot contains session tokens and message/event content. When
 `stateKeyFile` is set the snapshot is AES-256-GCM ciphertext; the service refuses

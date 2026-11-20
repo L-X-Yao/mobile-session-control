@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createRelay } from '../../server/src/relay.mjs';
 import { createFakeProvider } from '../src/testing/fake-provider.mjs';
 import { startSessionWorker } from '../src/m1/worker.mjs';
@@ -26,6 +27,8 @@ async function requestJson(url, {
     if (!response.ok) throw new Error(data?.error || `HTTP_${response.status}`);
     return data;
 }
+
+const WEB_DIR = fileURLToPath(new URL('../../../apps/web', import.meta.url));
 
 async function pair(relay) {
     return requestJson(`${relay.url}/v1/pair`, {
@@ -124,7 +127,7 @@ test('relay rejects a non-loopback bind before listen', async () => {
 });
 
 test('relay serves the M1 web client with exact static paths', async (t) => {
-    const relay = await createRelay({ port: 0 });
+    const relay = await createRelay({ port: 0, webDir: WEB_DIR });
     t.after(() => relay.close());
     const html = await fetch(`${relay.url}/`);
     assert.equal(html.status, 200);
@@ -154,6 +157,42 @@ test('relay serves the M1 web client with exact static paths', async (t) => {
     assert.equal(icon.headers.get('content-type'), 'image/png');
     const missing = await fetch(`${relay.url}/missing.txt`);
     assert.equal(missing.status, 404);
+});
+
+test('relay serves static files only when webDir is supplied', async (t) => {
+    const relay = await createRelay({ port: 0 });
+    t.after(() => relay.close());
+    assert.equal((await fetch(`${relay.url}/`)).status, 404);
+    await assert.rejects(
+        () => createRelay({ port: 0, webDir: 'apps/web' }),
+        /INVALID_WEB_DIR/,
+    );
+});
+
+test('relay keeps at most maxEventsPerSession events', async (t) => {
+    const relay = await createRelay({ port: 0, maxEventsPerSession: 2 });
+    t.after(() => relay.close());
+    const { token: pairToken } = await pair(relay);
+    const session = await createSession(relay, pairToken);
+    const eventsUrl = `${relay.url}/v1/sessions/${session.sessionId}/events`;
+    for (let index = 1; index <= 3; index += 1) {
+        await requestJson(eventsUrl, {
+            token: session.workerToken,
+            method: 'POST',
+            body: { type: 'assistant-message', content: `m${index}` },
+        });
+    }
+    const all = await requestJson(`${eventsUrl}?after=0`, { token: session.clientToken });
+    assert.equal(all.events.length, 2);
+    assert.deepEqual(all.events.map((item) => item.content), ['m2', 'm3']);
+    const tail = await requestJson(`${eventsUrl}?after=${all.events[0].seq}`, {
+        token: session.clientToken,
+    });
+    assert.deepEqual(tail.events.map((item) => item.content), ['m3']);
+    await assert.rejects(
+        () => createRelay({ port: 0, maxEventsPerSession: -1 }),
+        /INVALID_MAX_EVENTS/,
+    );
 });
 
 test('pair, client and worker tokens are scoped', async (t) => {

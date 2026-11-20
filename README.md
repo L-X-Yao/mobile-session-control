@@ -89,7 +89,6 @@ retains failed cleanup for retry.
 - `packages/server`: loopback relay
 - `examples/providers`: provider-profile templates
 - `deploy`: systemd user-unit template
-- `tests`: offline test notes
 - `docs`: architecture, protocol, security and operating documentation
 
 ## Development

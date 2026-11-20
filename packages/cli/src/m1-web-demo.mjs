@@ -9,6 +9,7 @@ import { createRelay } from '../../server/src/relay.mjs';
 import { startSessionManager } from './session/manager.mjs';
 
 const FAKE_HOST = fileURLToPath(new URL('./testing/fake-session-host.mjs', import.meta.url));
+const WEB_DIR = fileURLToPath(new URL('../../../apps/web', import.meta.url));
 const FAKE_PROVIDER = {
     id: 'fake', label: 'Fake (demo)', model: 'm1-demo', effort: 'low',
     transport: 'anthropic-compatible-sse', enabled: true,
@@ -20,6 +21,7 @@ async function main() {
     const relay = await createRelay({
         port: Number(process.env.MSC_PORT || 0),
         providers: [FAKE_PROVIDER],
+        webDir: WEB_DIR,
     });
     let manager = null;
     let closed = false;

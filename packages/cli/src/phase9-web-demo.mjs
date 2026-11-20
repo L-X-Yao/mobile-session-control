@@ -6,6 +6,7 @@
 // wrapper/key-file paths. Key values never enter this process or the repository.
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createRelay } from '../../server/src/relay.mjs';
 import { startSessionManager } from './session/manager.mjs';
 import {
@@ -13,6 +14,8 @@ import {
     makeRealHostResolver,
     phase9ProviderCatalog,
 } from './session/real-host.mjs';
+
+const WEB_DIR = fileURLToPath(new URL('../../../apps/web', import.meta.url));
 
 async function main() {
     const configPath = process.env.MSC_PHASE9_CONFIG || process.argv[2];
@@ -27,6 +30,7 @@ async function main() {
     const relay = await createRelay({
         port: Number(process.env.MSC_PORT || 0),
         providers: phase9ProviderCatalog(config.profiles),
+        webDir: WEB_DIR,
     });
     const manager = await startSessionManager({
         relayUrl: relay.url,

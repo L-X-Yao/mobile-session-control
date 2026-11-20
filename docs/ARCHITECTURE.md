@@ -22,7 +22,7 @@ explicit user approval for any remote access.
 | `packages/cli` | Provider schema, launcher guard, allowlist proxy, M1 worker/supervisor, session manager, SessionHost and Claude Code adapter; real provider profiles are supplied privately at runtime |
 | `packages/server` | Loopback relay with pairing, tokens, events and approvals; tested offline and in a local real-mode service |
 | `examples/providers` | Sanitized provider-profile templates |
-| `tests` | Offline syntax, secret/path scan and CLI tests (`npm test`) |
+| `packages/cli/test` | Offline syntax, secret/path scan and CLI tests (`npm test`) |
 | `docs` | Boundary and architecture documentation |
 
 No real-provider, real-phone, deployment, migration or 24-hour reliability claim
