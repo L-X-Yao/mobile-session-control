@@ -29,3 +29,7 @@ No public repository, release or publication is created by local preparation alo
 - The phone diagnostic harness is not part of this repository.
 - A full-history scan for secrets, personal paths and device identifiers was
   run over every commit before this decision.
+- Release gate 7 passed 2026-11-20: a fresh-HOME run of
+  `MSC_PROVIDER_PROFILE=examples/providers/deepseek.json npm run demo:m1`
+  finished with `completed` and `M1-DEMO-OK` against the loopback fake
+  provider.

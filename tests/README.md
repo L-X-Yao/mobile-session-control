@@ -1,8 +1,6 @@
-# Reproducible offline tests (placeholder)
+# Reproducible offline tests
 
-Status: not implemented.
-
-Intended contents:
+Contents:
 
 - Fake-provider fixtures.
 - Loopback-only integration tests.

@@ -67,7 +67,8 @@ npm run demo:web
 ```
 
 The development stages, review gates and session-collaboration rules are in
-`docs/DEVELOPMENT-WORKFLOW.md`. `precommit` rejects staged private/runtime files
+`docs/DEVELOPMENT-WORKFLOW.md`. See `CONTRIBUTING.md` for the change workflow and
+`SECURITY.md` for private vulnerability reporting. `precommit` rejects staged private/runtime files
 and runs the offline suite; `review:packet` pins the review artifact;
 `hooks:install` installs the local pre-commit hook. Hooks enforce process, not
 user approval, and `--no-verify` bypasses them.
