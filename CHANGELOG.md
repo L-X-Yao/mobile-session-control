@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.1 — 2026-11-20
 
 - Relay split into `constants`, `http` and `state` modules; the caller now
   supplies an absolute `webDir` for static serving.
