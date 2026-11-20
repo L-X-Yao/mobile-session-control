@@ -41,6 +41,10 @@ quota.
   directory with a provider-scoped wrapper; keys stay in private files outside
   the repository.
 
+<p align="center">
+  <img src="docs/assets/approval-card.png" alt="Approval card in the mobile client" width="320">
+</p>
+
 ## Status
 
 | Area | State |

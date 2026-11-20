@@ -2,7 +2,8 @@
 
 This project is a private, self-hosted control layer for local Claude
 Code-compatible sessions. The default posture is loopback-only and the test
-suite uses fake providers only.
+suite uses fake providers only. Participation is covered by
+`CODE_OF_CONDUCT.md`.
 
 ## Requirements
 

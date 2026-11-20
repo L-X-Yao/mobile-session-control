@@ -27,6 +27,10 @@ MSC_PROVIDER_PROFILE=examples/providers/deepseek.json npm run demo:m1
 会话管理器和 fake provider；最后一条使用 DeepSeek 的 profile 形态。预期输出包含
 `"status":"completed"` 和 `"content":"M1-DEMO-OK"`，不会调用真实 provider，也不消耗配额。
 
+<p align="center">
+  <img src="docs/assets/approval-card.png" alt="手机端审批卡" width="320">
+</p>
+
 ## 状态
 
 | 区域 | 状态 |
