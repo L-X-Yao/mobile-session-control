@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- A failed debounced snapshot write is captured instead of crashing; the next
+  change or `close()` retries, and a failed close still stops the server.
+- Rate-limit windows use the monotonic clock, so wall-clock steps cannot extend
+  or reset a window.
+- The launcher guard copies the env before `spawn`; the runtime cannot mutate
+  the caller's env object.
+- New `npm run test:coverage` (Node built-in coverage); CI soak runs with
+  concurrency 4.
+- New tests: persist fault injection, concurrent token renewal.
+
 ## 0.1.1 — 2026-11-20
 
 - Relay split into `constants`, `http` and `state` modules; the caller now

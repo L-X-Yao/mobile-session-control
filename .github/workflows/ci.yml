@@ -27,4 +27,4 @@ jobs:
           npm run demo:m1
           MSC_PROVIDER_PROFILE=examples/providers/deepseek.json npm run demo:m1
       - name: Short soak
-        run: SOAK_MS=3000 node scripts/soak.mjs
+        run: SOAK_MS=3000 SOAK_CONCURRENCY=4 node scripts/soak.mjs

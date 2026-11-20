@@ -196,7 +196,7 @@ test('passes only the explicit allowlisted env to the wrapper', () => {
             NO_PROXY: '127.0.0.1,localhost,::1',
         };
         guardLauncherExec({ wrapper, args: boundArgs, policy, env, spawn: stub });
-        assert.equal(captured, env);
+        assert.deepEqual(captured, env);
         assert.equal(captured.PATH, process.env.PATH);
         assert.equal(captured.HTTPS_PROXY, 'http://127.0.0.1:38803');
     } finally {

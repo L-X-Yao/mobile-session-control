@@ -287,7 +287,9 @@ export function guardLauncherExec({
     const validation = validateLauncherArgs(args, policy, { requireBinding: true });
     validateLauncherEnv(env, policy);
     const result = spawn(wrapper, args, {
-        encoding: 'utf8', env, cwd, stdio, shell: false,
+        // Copy so the runtime cannot mutate the caller's env object (for
+        // example by injecting coverage variables into it).
+        encoding: 'utf8', env: { ...env }, cwd, stdio, shell: false,
     });
     if (result.error) fail(`SPAWN_FAILED:${result.error.message}`);
     return {
@@ -431,7 +433,7 @@ export function guardLauncherExecAsync({
         let settled = false;
         const parentStartTicks = readStartTicks(process.pid, procRoot);
         const child = spawn(wrapper, args, {
-            cwd, env, stdio, shell: false, detached: true,
+            cwd, env: { ...env }, stdio, shell: false, detached: true,
         });
         const childStartTicks = readStartTicks(child.pid, procRoot) ?? parentStartTicks;
         let stdout = '';

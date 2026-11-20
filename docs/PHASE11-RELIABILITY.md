@@ -16,6 +16,8 @@ Status: offline development hardening, not a 24-hour or production claim.
 | Event retention | An open session keeps at most `maxEventsPerSession` events (default 5000); the oldest are dropped while `seq` stays monotonic and `eventId` de-duplication keeps working. |
 | Event pagination | `GET events` accepts `limit` (1-1000) and `tail=1`; `hasMore` reports a truncated window. The client reopens with the latest 200 events and drains capped polls immediately. |
 | State writes | Event-driven snapshot writes are debounced by `persistDelayMs` (default 250 ms in the service); security-relevant changes stay synchronous and `close()` flushes. |
+| Persist failure | A failed background write is captured (`relay.persistError`) instead of crashing the process; the next change or `close()` retries, and a failed close still stops the server and rejects. |
+| Rate window | Rate-limit buckets use the monotonic clock, so a wall-clock step cannot extend or reset a window. |
 | Relay state | Optional `stateFile` snapshot (owner-only 0600, atomic rename) restores tokens, sequences and pending approvals after a restart; the pairing code stays consumed. |
 | Token lifetime | Optional `tokenTtlMs` returns `401 token_expired` for pair/manager/session tokens; default off. |
 | Rate limit | Optional per-token/per-address fixed window returns `429 rate_limited` with `Retry-After`; default off. |

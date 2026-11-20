@@ -293,7 +293,9 @@ export async function createRelay({
         // bypass the address limit.
         const key = typeof token === 'string' && tokens.has(token)
             ? token : (req.socket.remoteAddress || 'unknown');
-        const at = Date.now();
+        // Rate windows are in-memory only; a monotonic clock keeps them stable
+        // when the host wall clock is stepped (as WSL2 does on this machine).
+        const at = performance.now();
         let bucket = rateBuckets.get(key);
         if (!bucket || at - bucket.start >= rateLimitWindowMs) {
             bucket = { start: at, count: 0 };
@@ -318,6 +320,19 @@ export async function createRelay({
     // keeping infrequent security-relevant changes synchronous. close()
     // flushes any pending write.
     let persistTimer = null;
+    let lastPersistError = null;
+    function flushPersist() {
+        persistTimer = null;
+        try {
+            persist();
+            lastPersistError = null;
+        } catch (error) {
+            // A failed background write must not crash the relay. Keep the
+            // state dirty; the next change or close() retries the snapshot.
+            lastPersistError = error;
+        }
+    }
+
     function schedulePersist() {
         if (!stateFile) return;
         if (persistDelayMs === 0) {
@@ -325,10 +340,7 @@ export async function createRelay({
             return;
         }
         if (persistTimer) return;
-        persistTimer = setTimeout(() => {
-            persistTimer = null;
-            persist();
-        }, persistDelayMs);
+        persistTimer = setTimeout(flushPersist, persistDelayMs);
         persistTimer.unref?.();
     }
 
@@ -876,15 +888,21 @@ export async function createRelay({
         sessions,
         stateFile,
         get pairingConsumed() { return pairingConsumed; },
+        get persistError() { return lastPersistError; },
         tokenTtlMs,
         rateLimit,
-        close: () => new Promise((resolve) => {
+        close: () => new Promise((resolve, reject) => {
             if (persistTimer) {
                 clearTimeout(persistTimer);
                 persistTimer = null;
             }
-            persist();
-            server.close(() => resolve());
+            let persistError = null;
+            try {
+                persist();
+            } catch (error) {
+                persistError = error;
+            }
+            server.close(() => (persistError ? reject(persistError) : resolve()));
             server.closeAllConnections?.();
         }),
     };

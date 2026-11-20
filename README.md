@@ -95,6 +95,7 @@ retains failed cleanup for retry.
 
 ```sh
 npm test
+npm run test:coverage
 npm run precommit
 npm run review:packet -- --with-tests
 npm run hooks:install

@@ -254,6 +254,55 @@ test('relay debounces event snapshots and flushes them on close', async () => {
     }
 });
 
+test('relay survives a failed background snapshot and retries on close', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'msc-persist-fail-'));
+    const file = path.join(dir, 'state.json');
+    const relay = await createRelay({ port: 0, stateFile: file, persistDelayMs: 10 });
+    let closed = false;
+    try {
+        const { token: pairToken } = await pair(relay);
+        const session = await createSession(relay, pairToken);
+        fs.chmodSync(dir, 0o500);
+        await requestJson(`${relay.url}/v1/sessions/${session.sessionId}/events`, {
+            token: session.workerToken,
+            method: 'POST',
+            body: { type: 'assistant-message', content: 'fault' },
+        });
+        await new Promise((resolve) => setTimeout(resolve, 80));
+        assert.ok(relay.persistError, 'expected a captured persist error');
+        assert.equal((await fetch(`${relay.url}/v1/health`)).status, 200);
+        fs.chmodSync(dir, 0o700);
+        await relay.close();
+        closed = true;
+        const after = JSON.parse(fs.readFileSync(file, 'utf8'));
+        assert.equal(after.sessions[0].events.length, 1);
+        assert.equal(after.sessions[0].events[0].content, 'fault');
+    } finally {
+        try { fs.chmodSync(dir, 0o700); } catch { /* already restored */ }
+        if (!closed) await relay.close().catch(() => {});
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
+
+test('concurrent token renewal rotates exactly once', async (t) => {
+    const relay = await createRelay({ port: 0 });
+    t.after(() => relay.close());
+    const { token } = await pair(relay);
+    const results = await Promise.allSettled([
+        requestJson(`${relay.url}/v1/tokens/renew`, { token, method: 'POST' }),
+        requestJson(`${relay.url}/v1/tokens/renew`, { token, method: 'POST' }),
+    ]);
+    const ok = results.filter((result) => result.status === 'fulfilled');
+    const failed = results.filter((result) => result.status === 'rejected');
+    assert.equal(ok.length, 1);
+    assert.equal(failed.length, 1);
+    assert.match(failed[0].reason.message, /unauthorized/);
+    const renewed = ok[0].value.token;
+    assert.notEqual(renewed, token);
+    const providers = await requestJson(`${relay.url}/v1/providers`, { token: renewed });
+    assert.ok(Array.isArray(providers.providers));
+});
+
 test('pair, client and worker tokens are scoped', async (t) => {
     const relay = await createRelay({ port: 0 });
     t.after(() => relay.close());
