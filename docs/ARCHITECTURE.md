@@ -1,9 +1,10 @@
 # Architecture — current design baseline
 
-Status: design baseline, not a product GO. The M1 relay, worker/supervisor,
-SessionHost and Claude Code adapter run offline against fake providers; the
-Android client is still a placeholder. Real-provider, real-phone, deployment and
-24-hour reliability claims remain unsupported.
+Status: design baseline, not a product GO. The relay, worker/supervisor,
+SessionHost and Claude Code adapter run offline against fake providers; a local
+real-mode service is documented but its evidence is not bundled. The Android
+client is still a placeholder. Real-provider, real-phone, deployment and
+24-hour reliability claims remain unsupported by this repository.
 
 ## 1. Goal
 
@@ -18,10 +19,10 @@ explicit user approval for any remote access.
 |---|---|
 | `apps/android` | Placeholder |
 | `apps/web` | Pairing, session list, approval cards, Stop, reconnect and installable PWA shell; native Android later |
-| `packages/cli` | Provider schema, launcher guard, allowlist proxy, M1 worker/supervisor, session manager, SessionHost and Claude Code adapter; real provider profiles not wired |
-| `packages/server` | M1 loopback relay scaffold; production relay not implemented |
+| `packages/cli` | Provider schema, launcher guard, allowlist proxy, M1 worker/supervisor, session manager, SessionHost and Claude Code adapter; real provider profiles are supplied privately at runtime |
+| `packages/server` | Loopback relay with pairing, tokens, events and approvals; tested offline and in a local real-mode service |
 | `examples/providers` | Sanitized provider-profile templates |
-| `tests` | Placeholder |
+| `tests` | Offline syntax, secret/path scan and CLI tests (`npm test`) |
 | `docs` | Boundary and architecture documentation |
 
 No real-provider, real-phone, deployment, migration or 24-hour reliability claim
