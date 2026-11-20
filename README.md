@@ -1,6 +1,7 @@
 # Mobile Session Control
 
 [![CI](https://github.com/L-X-Yao/mobile-session-control/actions/workflows/ci.yml/badge.svg)](https://github.com/L-X-Yao/mobile-session-control/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/L-X-Yao/mobile-session-control/actions/workflows/codeql.yml/badge.svg)](https://github.com/L-X-Yao/mobile-session-control/actions/workflows/codeql.yml)
 
 English | [简体中文](README.zh-CN.md)
 
@@ -15,7 +16,8 @@ cloud service and no telemetry.
 ## Quick start
 
 Requirements: Node.js 22 or newer. The offline path needs no account, provider
-key or network access.
+key or network access and runs on Linux, WSL2 and macOS. The durable systemd
+service targets Linux/WSL2.
 
 ```sh
 git clone https://github.com/L-X-Yao/mobile-session-control.git

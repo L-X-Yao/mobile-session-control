@@ -22,3 +22,9 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - name: Offline checks
         run: npm test
+      - name: Demo slices
+        run: |
+          npm run demo:m1
+          MSC_PROVIDER_PROFILE=examples/providers/deepseek.json npm run demo:m1
+      - name: Short soak
+        run: SOAK_MS=3000 node scripts/soak.mjs

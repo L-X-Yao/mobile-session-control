@@ -3,20 +3,29 @@
 This repository's original source is licensed under the MIT License; see
 `LICENSE`.
 
-## External components
+## External dependencies used at runtime
 
-These components are not bundled in this repository. They are installed or
-provided separately by the user and remain under their own licenses.
+These components are installed or provided separately by the user and remain
+under their own licenses. They are not bundled in this repository.
 
 | Component | License | Role |
 |---|---|---|
-| `happy` | MIT | Upstream client, external runtime dependency; not imported here |
-| `happy-server-self-host` | MIT | Upstream server, external runtime dependency |
-| `@slopus/happy-wire` | MIT | Upstream wire package, external runtime dependency |
-| `tweetnacl` | Unlicense | Upstream dependency, external runtime dependency |
-| `socket.io-client` | MIT | Upstream dependency, external runtime dependency |
 | Claude Agent SDK | separately licensed | External dependency, not bundled |
 | Claude Code executable | separately licensed | External dependency, not bundled |
+
+## Evaluated upstream, not used
+
+The Happy project and its packages were evaluated as a possible upstream. No
+Happy source is imported or bundled, and the current code does not depend on
+these packages. They are listed for provenance and attribution only.
+
+| Component | License | Status |
+|---|---|---|
+| `happy` | MIT | Not used |
+| `happy-server-self-host` | MIT | Not used |
+| `@slopus/happy-wire` | MIT | Not used |
+| `tweetnacl` | Unlicense | Not used |
+| `socket.io-client` | MIT | Not used |
 
 ## Happy MIT license
 

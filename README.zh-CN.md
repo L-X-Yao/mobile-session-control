@@ -4,6 +4,8 @@
 
 [English](README.md) | 简体中文
 
+中文版可能滞后，内容以英文版为准。
+
 私有、自托管的手机控制层，用来操作本机多个 Claude Code 兼容会话
 （DeepSeek / Kimi / GLM）。
 
