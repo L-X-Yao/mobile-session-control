@@ -135,7 +135,8 @@ systemd user unit. See `docs/SERVICE.md`, `docs/BACKUP.md` and
 `.github/workflows/release.yml`; see `docs/RELEASE.md` for the checklist and
 artifacts. Device loss and recovery are covered in `docs/REVOCATION.md`; the
 supported production scope and evidence matrix are in
-`docs/PRODUCTION-READINESS.md`.
+`docs/PRODUCTION-READINESS.md`. Android release signing is covered in
+`docs/ANDROID-SIGNING.md`.
 
 The real Claude Code adapter test is opt-in because the Agent SDK and `claude`
 executable are external:

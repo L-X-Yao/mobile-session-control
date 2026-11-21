@@ -35,7 +35,7 @@ not in this repository and must never be committed.
 - Token renewal/TTL handling in the app.
 - `security-crypto` is on the 1.1.0 alpha line; migrate when the stable
   replacement ships.
-- Release signing and Play Store/TWA packaging.
+- Release signing and Play Store/TWA packaging; see `docs/ANDROID-SIGNING.md`.
 - Real-service HTTPS/Tailscale pairing and one real turn passed on 2026-11-21;
   the app lock and QR scan were not automated. Human hands-on remains
   `NO_DATA`.
