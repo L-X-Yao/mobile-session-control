@@ -39,6 +39,7 @@ Android parity, iOS-specific packaging.
 | Offline behavior | `npm test` 201 tests, scenario suite, 89% line coverage | PASS |
 | Browser client | Playwright mobile E2E: pairing, allow/deny, question, Stop, two tabs, renewal, revocation | PASS |
 | Device revocation | Relay/service/web tests, operator CLI encrypted-state test | PASS |
+| Real-phone revocation | 2026-11-21, ADB: revoke, new pairing code, re-pair; no provider call | PASS |
 | Backup recovery | Plaintext and encrypted restore drills | PASS |
 | Metrics | Relay metrics endpoint test | PASS |
 | CI matrix | Node 22 and 24, CodeQL, Browser E2E | PASS |
@@ -48,7 +49,7 @@ Android parity, iOS-specific packaging.
 | Build attestation | `v0.1.3` tarball digest has a published build-provenance bundle | PASS |
 | `OnFailure` alert | Unit template added; not exercised on a failed service | `NO_DATA` |
 | Continuous 24-hour | Not run to completion with instrumented evidence | `NO_DATA` |
-| Human hands-on phone | Previous runs were ADB automation | `NO_DATA` |
+| Human hands-on phone | All phone runs so far are ADB automation | `NO_DATA` |
 | Provider HTTP counts/attestation | No direct provider-side evidence | `NO_DATA` |
 | iOS Safari / browser matrix | Not tested | `NO_DATA` |
 | Signed tags | No signing key configured | `NO_DATA` |

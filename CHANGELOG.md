@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.4 — 2026-11-21
+
 - The launcher guard polls for daemonized descendants for up to one second
   after SIGKILL instead of failing on the first 100 ms rescan, removing a
   supervisor test flake.
