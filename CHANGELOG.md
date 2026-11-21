@@ -2,14 +2,20 @@
 
 ## Unreleased
 
+## 0.1.5 — 2026-11-21
+
 - New Android MVP client (Kotlin/Compose): pairing/QR, session list, chat,
   approvals, questions, Stop/close, biometric lock; tokens in
-  EncryptedSharedPreferences. Debug APK builds and lint passes; push and release
-  signing are later.
+  EncryptedSharedPreferences. Debug/release builds and lint pass; signed
+  APK/AAB artifacts are produced locally with a private keystore.
 - New Android CI workflow builds the debug APK and runs lint.
 - Relay push registration and Android UnifiedPush connector; self-hosted ntfy
   delivered a generic synthetic approval notification. Provider-driven push
   remains `NO_DATA`.
+- Android release signing is environment-driven; keystore and passwords stay
+  outside the repository. See `docs/ANDROID-SIGNING.md`.
+- Three segmented one-hour fake-host soaks completed with 112,372 cycles, zero
+  failures and zero stalls; continuous 24h remains `NO_DATA`.
 - New experimental native-session mode: `npm run native:list` inventories local
   Claude Code sessions; `npm run native` exposes them as phone providers and
   resumes a selected session through the Agent SDK, forking active sessions.

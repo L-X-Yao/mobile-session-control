@@ -39,6 +39,11 @@ Do not move or reuse a published tag. Fix forward with a new patch version.
 | `sbom.cdx.json` | CycloneDX 1.5 application record; no bundled third-party components |
 | `RELEASE-NOTES.md` | Changelog section for the version plus artifact checksums |
 
+Android release artifacts are built separately because the signing key is not
+in CI: run `assembleRelease`/`bundleRelease` with the private keystore and
+upload `app-release.apk`, `app-release.aab` and their checksums manually. See
+`docs/ANDROID-SIGNING.md`.
+
 Verify a download with `sha256sum -c SHA256SUMS` and
 `sha256sum -c MANIFEST.sha256`. The SBOM states that the Claude Agent SDK and
 Claude Code are external, not bundled.
