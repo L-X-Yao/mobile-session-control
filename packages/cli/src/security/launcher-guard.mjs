@@ -484,13 +484,22 @@ export function guardLauncherExecAsync({
                     reject(new LauncherGuardError('WRAPPER_KILL_FAILED'));
                     return;
                 }
-                if (first.pids.length > 0) await sleepMs(100);
-                const rescan = scanStrayHomeProcesses(env.HOME, procRoot, childStartTicks);
-                if (!rescan.ok) {
-                    reject(new LauncherGuardError('WRAPPER_KILL_FAILED'));
-                    return;
+                // SIGKILL is not synchronous: a daemonized descendant can
+                // remain visible for a short time, especially on a loaded
+                // runner. Poll until the tree is gone rather than failing on
+                // the first 100 ms rescan.
+                let remaining = first.pids;
+                const deadline = performance.now() + 1000;
+                while (remaining.length > 0 && performance.now() < deadline) {
+                    await sleepMs(50);
+                    const rescan = scanStrayHomeProcesses(env.HOME, procRoot, childStartTicks);
+                    if (!rescan.ok) {
+                        reject(new LauncherGuardError('WRAPPER_KILL_FAILED'));
+                        return;
+                    }
+                    remaining = rescan.pids;
                 }
-                if (rescan.pids.length > 0) {
+                if (remaining.length > 0) {
                     reject(new LauncherGuardError('WRAPPER_DESCENDANT_ESCAPED'));
                     return;
                 }

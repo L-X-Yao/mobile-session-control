@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The launcher guard polls for daemonized descendants for up to one second
+  after SIGKILL instead of failing on the first 100 ms rescan, removing a
+  supervisor test flake.
+
 ## 0.1.3 — 2026-11-21
 
 - Device revocation: `POST /v1/device/revoke` and a PWA action invalidate the

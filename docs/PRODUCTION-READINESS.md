@@ -42,10 +42,10 @@ Android parity, iOS-specific packaging.
 | Backup recovery | Plaintext and encrypted restore drills | PASS |
 | Metrics | Relay metrics endpoint test | PASS |
 | CI matrix | Node 22 and 24, CodeQL, Browser E2E | PASS |
-| Release workflow | `v0.1.2` published with four verified assets | PASS |
+| Release workflow | `v0.1.3` published with four verified assets and a build attestation | PASS |
 | Short soak | 10-minute fake-host run, 6,788 cycles, 0 failures | PASS |
 | Scorecard | First run on `48efafa` succeeded | PASS |
-| Build attestation | Workflow added; the next tagged release will produce it | `NO_DATA` |
+| Build attestation | `v0.1.3` tarball digest has a published build-provenance bundle | PASS |
 | `OnFailure` alert | Unit template added; not exercised on a failed service | `NO_DATA` |
 | Continuous 24-hour | Not run to completion with instrumented evidence | `NO_DATA` |
 | Human hands-on phone | Previous runs were ADB automation | `NO_DATA` |
