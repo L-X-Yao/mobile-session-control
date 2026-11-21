@@ -39,7 +39,11 @@ Android parity, iOS-specific packaging.
 | Offline behavior | `npm test` 201 tests, scenario suite, 89% line coverage | PASS |
 | Browser client | Playwright mobile E2E: pairing, allow/deny, question, Stop, two tabs, renewal, revocation | PASS |
 | Android client | Debug APK builds/lints; ADB fake-relay smoke: pair, chat, allow, question | PASS |
-| Android real service | Not tested over HTTPS/Tailscale; no FCM/biometrics | `NO_DATA` |
+| Android real service | 2026-11-21 HTTPS/Tailscale: pair, DeepSeek provider, one real completed turn | PASS |
+| Android app lock / QR | Biometric prompt appears on launch; unlock and QR scan not automated | `NO_DATA` |
+| Android real Bash approval | The prompt returned text without a Bash tool call; no permission event | `NO_DATA` |
+| Android CI | Workflow added; first run pending | `NO_DATA` |
+| Android push | Design only; no provider or delivery yet | `NO_DATA` |
 | Device revocation | Relay/service/web tests, operator CLI encrypted-state test | PASS |
 | Real-phone revocation | 2026-11-21, ADB: revoke, new pairing code, re-pair; no provider call | PASS |
 | Native session takeover | Fake-SDK listing/resume/fork integration; real session resume not run | `NO_DATA` |
@@ -48,6 +52,7 @@ Android parity, iOS-specific packaging.
 | CI matrix | Node 22 and 24, CodeQL, Browser E2E | PASS |
 | Release workflow | `v0.1.4` published with four verified assets and a build attestation | PASS |
 | Short soak | 10-minute fake-host run, 6,788 cycles, 0 failures | PASS |
+| Segmented soak | 1-hour run: 37,408 cycles, 0 failures, 0 stalls; two more runs pending | PASS (1/3) |
 | Fault injection | Crash restart, polling failure, persist failure and corrupt-state tests | PASS |
 | Protocol fuzz | Deterministic malformed traffic, no 5xx | PASS |
 | Performance baseline | 100 turns: p50 25.7 ms, p95 35.3 ms, 148 MB RSS | PASS |

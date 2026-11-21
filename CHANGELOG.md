@@ -2,9 +2,11 @@
 
 ## Unreleased
 
-- New Android MVP client (Kotlin/Compose): pairing, session list, chat,
-  approvals, questions, Stop/close; tokens in EncryptedSharedPreferences.
-  Debug APK builds and lint passes; push/biometrics/release signing are later.
+- New Android MVP client (Kotlin/Compose): pairing/QR, session list, chat,
+  approvals, questions, Stop/close, biometric lock; tokens in
+  EncryptedSharedPreferences. Debug APK builds and lint passes; push and release
+  signing are later.
+- New Android CI workflow builds the debug APK and runs lint.
 - New experimental native-session mode: `npm run native:list` inventories local
   Claude Code sessions; `npm run native` exposes them as phone providers and
   resumes a selected session through the Agent SDK, forking active sessions.

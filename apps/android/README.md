@@ -6,10 +6,11 @@ loopback relay and stores the device/session tokens in
 
 ## Implemented
 
-- Pair with a relay URL and one-time code.
+- Pair with a relay URL and one-time code, or scan the pairing QR code.
 - Session list, provider selection and new session creation.
 - Streaming poll, user/assistant bubbles, permission allow/deny, question
   options, Stop and close.
+- Biometric/device-credential app lock when a device token is stored.
 - HTTPS by default; cleartext is allowed only for `127.0.0.1` and `localhost`
   (for `adb reverse` testing).
 
@@ -28,11 +29,11 @@ not in this repository and must never be committed.
 
 ## Not implemented yet
 
-- Push notifications (FCM), biometric unlock, QR pairing.
+- Push notifications (FCM/ntfy/UnifiedPush); design in `docs/PUSH.md`.
 - Token renewal/TTL handling in the app.
 - `security-crypto` is on the 1.1.0 alpha line; migrate when the stable
   replacement ships.
-- Release signing, Play Store/TWA packaging, Android CI job.
-- Real-service HTTPS/Tailscale testing, FCM push, biometrics and release
-  signing. A debug APK smoke test against a fake relay was run via ADB on
-  2026-11-21; human hands-on remains `NO_DATA`.
+- Release signing and Play Store/TWA packaging.
+- Real-service HTTPS/Tailscale pairing and one real turn passed on 2026-11-21;
+  the app lock and QR scan were not automated. Human hands-on remains
+  `NO_DATA`.

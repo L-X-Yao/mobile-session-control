@@ -1,8 +1,13 @@
 package dev.lxyao.msc
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
+import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,11 +48,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -62,18 +70,20 @@ private val DarkColors = darkColorScheme(
     error = Color(0xFFFF7B72),
 )
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme(colorScheme = DarkColors) {
-                val model: MscViewModel = viewModel()
-                val state by model.state.collectAsState()
-                Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
-                    when (state.screen) {
-                        Screen.Pair -> PairScreen(state, model)
-                        Screen.Sessions -> SessionsScreen(state, model)
-                        Screen.Chat -> ChatScreen(state, model)
+                BiometricGate {
+                    val model: MscViewModel = viewModel()
+                    val state by model.state.collectAsState()
+                    Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
+                        when (state.screen) {
+                            Screen.Pair -> PairScreen(state, model)
+                            Screen.Sessions -> SessionsScreen(state, model)
+                            Screen.Chat -> ChatScreen(state, model)
+                        }
                     }
                 }
             }
@@ -82,7 +92,86 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+private fun BiometricGate(content: @Composable () -> Unit) {
+    val context = LocalContext.current
+    val activity = context as? FragmentActivity
+    val hasToken = remember { MscStore(context).deviceToken != null }
+    var unlocked by remember { mutableStateOf(!hasToken) }
+    var message by remember { mutableStateOf<String?>(null) }
+
+    fun prompt() {
+        val current = activity ?: run { unlocked = true; return }
+        val manager = BiometricManager.from(current)
+        val allowed = BiometricManager.Authenticators.BIOMETRIC_WEAK or
+            BiometricManager.Authenticators.DEVICE_CREDENTIAL
+        if (manager.canAuthenticate(allowed) != BiometricManager.BIOMETRIC_SUCCESS) {
+            message = "设备未设置可用的锁屏，应用锁已跳过"
+            unlocked = true
+            return
+        }
+        val biometric = BiometricPrompt(
+            current,
+            ContextCompat.getMainExecutor(current),
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    message = null
+                    unlocked = true
+                }
+                override fun onAuthenticationError(code: Int, text: CharSequence) {
+                    message = text.toString()
+                }
+            },
+        )
+        biometric.authenticate(
+            BiometricPrompt.PromptInfo.Builder()
+                .setTitle("解锁 Mobile Session Control")
+                .setAllowedAuthenticators(allowed)
+                .build(),
+        )
+    }
+
+    LaunchedEffect(hasToken) {
+        if (hasToken && !unlocked) prompt()
+    }
+
+    if (unlocked) {
+        content()
+        return
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text("Mobile Session Control", style = MaterialTheme.typography.headlineSmall)
+        Text("已锁定", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(16.dp))
+        Button(onClick = ::prompt) { Text("解锁") }
+        message?.let {
+            Spacer(Modifier.height(12.dp))
+            Text(it, color = MaterialTheme.colorScheme.error)
+        }
+    }
+}
+
+@Composable
 private fun PairScreen(state: UiState, model: MscViewModel) {
+    val scanner = rememberLauncherForActivityResult(ScanContract()) { result ->
+        val contents = result.contents ?: return@rememberLauncherForActivityResult
+        val uri = contents.toUri()
+        val fragment = uri.fragment.orEmpty()
+        val code = fragment.split('&').firstOrNull { it.startsWith("code=") }
+            ?.removePrefix("code=")
+        val host = uri.host
+        if (host != null && !code.isNullOrEmpty()) {
+            val port = if (uri.port >= 0) ":${uri.port}" else ""
+            model.setBaseUrl("${uri.scheme}://$host$port")
+            model.setCode(code)
+            model.pair()
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -120,6 +209,16 @@ private fun PairScreen(state: UiState, model: MscViewModel) {
         ) {
             Text(if (state.busy) "配对中…" else "配对")
         }
+        Spacer(Modifier.height(8.dp))
+        TextButton(onClick = {
+            scanner.launch(
+                ScanOptions()
+                    .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                    .setPrompt("扫描配对二维码")
+                    .setBeepEnabled(false)
+                    .setOrientationLocked(false),
+            )
+        }) { Text("扫描二维码") }
         state.error?.let {
             Spacer(Modifier.height(12.dp))
             Text(it, color = MaterialTheme.colorScheme.error)
