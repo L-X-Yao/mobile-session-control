@@ -44,6 +44,7 @@ test('workflow rules mark sensitive source and protocol paths', () => {
     assert.equal(isSensitive('docs/SERVICE.md'), true);
     assert.equal(isSensitive('apps/web/app.js'), true);
     assert.equal(isSensitive('apps/web/sw.js'), true);
+    assert.equal(isSensitive('apps/android/app/src/main/AndroidManifest.xml'), true);
     assert.equal(isSensitive('scripts/scan-patterns.mjs'), true);
     assert.equal(isSensitive('scripts/workflow-rules.mjs'), true);
     assert.equal(isSensitive('scripts/precommit.mjs'), true);

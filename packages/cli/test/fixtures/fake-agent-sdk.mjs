@@ -11,6 +11,18 @@ function promptText(message) {
     return message?.message?.content;
 }
 
+export async function listSessions() {
+    return [{
+        sessionId: '11111111-2222-4333-8444-555555555555',
+        summary: 'Fake native session',
+        customTitle: 'Fake native session',
+        firstPrompt: 'fake native',
+        cwd: process.cwd(),
+        lastModified: Date.now(),
+        fileSize: 1,
+    }];
+}
+
 export function query({ prompt, options = {} }) {
     let gate = null;
     let closed = false;
@@ -50,6 +62,21 @@ export function query({ prompt, options = {} }) {
                     { signal: new AbortController().signal, suggestions: [] },
                 );
                 const text = `FAKE-SDK-MCP:${result.behavior}`;
+                yield { type: 'assistant', message: { content: [{ type: 'text', text }] } };
+                yield {
+                    type: 'result', subtype: 'success', is_error: false, result: text,
+                };
+                continue;
+            }
+            if (content.includes('nativeinfo')) {
+                const text = [
+                    'FAKE-SDK-NATIVE',
+                    options.resume || '',
+                    options.persistSession === true ? 'persist' : 'ephemeral',
+                    Array.isArray(options.settingSources)
+                        ? options.settingSources.join(',') : 'default-sources',
+                    options.forkSession === true ? 'fork' : 'same',
+                ].join(':');
                 yield { type: 'assistant', message: { content: [{ type: 'text', text }] } };
                 yield {
                     type: 'result', subtype: 'success', is_error: false, result: text,

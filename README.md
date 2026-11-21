@@ -53,7 +53,7 @@ quota.
 |---|---|
 | Relay, session manager, host and Claude adapter | Implemented; tested offline against fake providers |
 | Mobile web client / PWA | Pairing, session list, chat, approvals, Stop, reconnect, installable shell |
-| Native Android client | Placeholder |
+| Native Android client | MVP debug build: pairing, sessions, chat, approvals, Stop, questions |
 | Real-phone and real-provider evidence | Not bundled in this repository |
 | Continuous 24-hour reliability | `NO_DATA` |
 | Background Web Push, APK/TWA | Not implemented |
@@ -103,6 +103,8 @@ npm run revoke:device -- --state-file <absolute>
 npm run restore:drill -- --backup <absolute.tgz>
 npm run scenario
 npm run bench
+npm run native:list
+npm run native
 npm run e2e:web
 npm run test:soak
 npm run demo:m1

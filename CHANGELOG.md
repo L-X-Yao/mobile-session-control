@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- New Android MVP client (Kotlin/Compose): pairing, session list, chat,
+  approvals, questions, Stop/close; tokens in EncryptedSharedPreferences.
+  Debug APK builds and lint passes; push/biometrics/release signing are later.
+- New experimental native-session mode: `npm run native:list` inventories local
+  Claude Code sessions; `npm run native` exposes them as phone providers and
+  resumes a selected session through the Agent SDK, forking active sessions.
+  See `docs/NATIVE-SESSIONS.md`.
+- The Claude host adapter can load native settings, persist the resumed session
+  and pass `resume`/`forkSession` when native mode is requested.
 - New `npm run bench` records offline turn, event-read and session-list latency
   percentiles plus RSS against the fake host.
 - New deterministic protocol fuzz test sends malformed methods, paths, auth and

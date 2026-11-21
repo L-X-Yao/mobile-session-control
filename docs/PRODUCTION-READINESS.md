@@ -38,8 +38,11 @@ Android parity, iOS-specific packaging.
 |---|---|---|
 | Offline behavior | `npm test` 201 tests, scenario suite, 89% line coverage | PASS |
 | Browser client | Playwright mobile E2E: pairing, allow/deny, question, Stop, two tabs, renewal, revocation | PASS |
+| Android client | Debug APK builds/lints; ADB fake-relay smoke: pair, chat, allow, question | PASS |
+| Android real service | Not tested over HTTPS/Tailscale; no FCM/biometrics | `NO_DATA` |
 | Device revocation | Relay/service/web tests, operator CLI encrypted-state test | PASS |
 | Real-phone revocation | 2026-11-21, ADB: revoke, new pairing code, re-pair; no provider call | PASS |
+| Native session takeover | Fake-SDK listing/resume/fork integration; real session resume not run | `NO_DATA` |
 | Backup recovery | Plaintext and encrypted restore drills | PASS |
 | Metrics | Relay metrics endpoint test | PASS |
 | CI matrix | Node 22 and 24, CodeQL, Browser E2E | PASS |

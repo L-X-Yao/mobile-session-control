@@ -479,14 +479,23 @@ function startStdin() {
 async function main() {
     const query = await loadQuery();
     input = createInputStream();
+    const native = process.env.CLAUDE_NATIVE === '1';
+    const resume = native && typeof process.env.CLAUDE_RESUME_SESSION_ID === 'string'
+        ? process.env.CLAUDE_RESUME_SESSION_ID : '';
     queryHandle = query({
         prompt: input.stream,
         options: {
             cwd: process.cwd(),
             permissionMode: 'default',
             permissionPrompts: 'host',
-            settingSources: [],
-            persistSession: false,
+            // Native mode loads the user's real Claude settings and writes the
+            // resumed session back to ~/.claude/projects. Isolated SDK mode
+            // keeps the previous empty settings/no-persistence posture.
+            ...(native ? {} : { settingSources: [] }),
+            persistSession: native,
+            ...(resume ? { resume } : {}),
+            ...(resume && process.env.CLAUDE_FORK_SESSION === '1'
+                ? { forkSession: true } : {}),
             canUseTool: askPermission,
             ...(process.env.CLAUDE_CODE_PATH
                 ? { pathToClaudeCodeExecutable: process.env.CLAUDE_CODE_PATH } : {}),

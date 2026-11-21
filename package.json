@@ -29,6 +29,8 @@
     "hooks:install": "node scripts/install-hooks.mjs",
     "test:cli": "node --test --test-concurrency=1 packages/cli/test/*.test.mjs",
     "test:coverage": "node --test --test-concurrency=1 --test-timeout=120000 --experimental-test-coverage --test-coverage-lines=85 packages/cli/test/*.test.mjs",
+    "native": "node scripts/native.mjs",
+    "native:list": "node scripts/native-sessions.mjs",
     "scenario": "node scripts/scenario.mjs",
     "bench": "node scripts/bench.mjs",
     "e2e:web": "node scripts/e2e-web.mjs",
