@@ -729,6 +729,29 @@ test('web client retries one 401 with a token rotated by another tab', async (t)
     assert.equal(elements.get('chat-view').hidden, false);
 });
 
+test('web client adopts an equal-epoch sibling token after a 401', async (t) => {
+    const storage = new Map([
+        ['msc.deviceToken', 'device-token'],
+        ['msc.sessions', JSON.stringify({
+            s1: { clientToken: 'client-token', clientTokenEpoch: 2, provider: { id: 'fake' } },
+        })],
+    ]);
+    const { elements, state, localStorageData } = await bootSyntheticClient({
+        events: [{ seq: 1, type: 'assistant-turn-start' }],
+        storageData: storage,
+        ready: (els) => els.get('stop').disabled === false,
+    });
+    t.after(() => { try { elements.get('back').dispatch('click'); } catch { /* best effort */ } });
+    // A concurrent rotation wrote the same epoch; the epoch rule keeps the
+    // local token, but the relay has already revoked it.
+    localStorageData.set('msc.sessions', JSON.stringify({
+        s1: { clientToken: 'client-token-sibling', clientTokenEpoch: 2, provider: { id: 'fake' } },
+    }));
+    state.rejectAuth = 'Bearer client-token';
+    await waitFor(() => state.auths.includes('Bearer client-token-sibling'), 4000);
+    assert.equal(elements.get('status').textContent.includes('token 无效'), false);
+});
+
 test('a stale tab save keeps a session created by a sibling tab', async (t) => {
     const { elements, localStorageData } = await bootSyntheticClient({
         events: [{ seq: 1, type: 'assistant-turn-start' }],

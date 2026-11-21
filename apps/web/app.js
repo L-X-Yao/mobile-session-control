@@ -128,6 +128,33 @@ function refreshedToken(token) {
     return '';
 }
 
+// A 401 proves the token this call used is already invalid. Two tabs can
+// rotate concurrently and obtain the same epoch, in which case the normal
+// epoch comparison keeps the local token even though storage holds the one
+// the relay currently accepts. Prefer the stored sibling token for this one
+// retry regardless of epoch; the rejected token cannot be used again.
+function adoptStoredTokenAfterAuthFailure(token) {
+    if (!token) return '';
+    if (deviceToken === token) {
+        const stored = storageGet(DEVICE_KEY);
+        if (stored && stored !== token) {
+            deviceToken = stored;
+            return stored;
+        }
+    }
+    const stored = storageJson(SESSIONS_KEY, {});
+    for (const [sessionId, local] of Object.entries(sessions)) {
+        if (local?.clientToken !== token) continue;
+        const remote = stored[sessionId];
+        if (!remote?.clientToken || remote.clientToken === token) continue;
+        local.clientToken = remote.clientToken;
+        local.clientTokenEpoch = Number(remote.clientTokenEpoch) || 0;
+        if (active?.sessionId === sessionId) active.clientToken = local.clientToken;
+        return local.clientToken;
+    }
+    return '';
+}
+
 function saveSessions() {
     // A frozen background tab may have missed the storage event. Merge both
     // newer tokens and sibling-created sessions before writing the whole map,
@@ -407,6 +434,8 @@ async function request(path, {
                 // current credential. Retry with the role's current token.
                 const current = currentToken();
                 if (current && current !== useToken) return send(current, false);
+                const adopted = adoptStoredTokenAfterAuthFailure(useToken);
+                if (adopted && adopted !== useToken) return send(adopted, false);
             }
             throw error;
         }

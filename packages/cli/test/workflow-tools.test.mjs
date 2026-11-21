@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { blockedStagedFile, isSensitive } from '../../../scripts/workflow-rules.mjs';
 
 const BACKUP = fileURLToPath(new URL('../../../scripts/backup-state.mjs', import.meta.url));
+const RELEASE = fileURLToPath(new URL('../../../scripts/release-artifacts.mjs', import.meta.url));
 
 test('workflow rules block nested private paths and non-regular modes', () => {
     assert.equal(
@@ -50,10 +51,27 @@ test('workflow rules mark sensitive source and protocol paths', () => {
     assert.equal(isSensitive('scripts/review-packet.mjs'), true);
     assert.equal(isSensitive('scripts/install-hooks.mjs'), true);
     assert.equal(isSensitive('scripts/backup-state.mjs'), true);
+    assert.equal(isSensitive('scripts/release-artifacts.mjs'), true);
+    assert.equal(isSensitive('scripts/scenario.mjs'), true);
+    assert.equal(isSensitive('scripts/e2e-web.mjs'), true);
+    assert.equal(isSensitive('scripts/soak.mjs'), true);
     assert.equal(isSensitive('.github/workflows/ci.yml'), true);
     assert.equal(isSensitive('apps/web/style.css'), false);
     assert.equal(isSensitive('README.md'), false);
     assert.equal(isSensitive('docs/DEVELOPMENT-WORKFLOW.md'), false);
+});
+
+test('release artifacts reject a tag that does not match package.json', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'msc-release-'));
+    try {
+        const result = spawnSync(process.execPath, [
+            RELEASE, '--tag', 'v0.0.0', '--out', path.join(dir, 'dist'),
+        ], { encoding: 'utf8' });
+        assert.equal(result.status, 1);
+        assert.match(result.stderr, /does not match tag/);
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
 });
 
 test('backup script archives state without runs and refuses overwrite', () => {

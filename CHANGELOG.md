@@ -23,6 +23,18 @@
   suite runs on the working tree.
 - CI validates provider profiles and runs `test:coverage` with an 85% line
   threshold on Node 24.
+- GitHub Actions are pinned to commit SHAs; CI and CodeQL cancel superseded
+  runs; a daily workflow runs a ten-minute fake-host soak.
+- The tag-triggered release workflow builds a source archive, `SHA256SUMS`,
+  `MANIFEST.sha256`, a CycloneDX SBOM and release notes. See `docs/RELEASE.md`.
+- New `npm run scenario` deterministic offline SITL slice: allow, deny,
+  question, malformed host output, pagination, token rotation, close and
+  restart replay, with a JSON report.
+- New optional `npm run e2e:web` Chromium scenario for pairing, chat, approvals,
+  question cards, Stop, two tabs and cross-tab token adoption.
+- The web client retries a 401 with a stored sibling token when two tabs
+  rotated to the same epoch; previously the revoked local token could leave the
+  chat stuck.
 
 ## 0.1.1 — 2026-11-20
 

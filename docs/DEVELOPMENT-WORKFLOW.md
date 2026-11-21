@@ -43,6 +43,7 @@ Independent review is required when a batch changes:
 - cryptography or private state handling;
 - the relay, session-host or provider wire protocol;
 - deployment, systemd/service lifecycle or writable-path policy;
+- CI, release artifacts, tags or workflow enforcement scripts;
 - provider/phone evidence claims or external dependencies;
 - user-facing documentation claims about safety or readiness.
 
@@ -114,6 +115,9 @@ packet. The reviewer confirms the fix and states whether any high/medium remain.
 |---|---|
 | `npm test` | Syntax, tracked-path policy, secret/path scan, CLI tests |
 | `npm run precommit` | Reject staged private/runtime files, require a clean working tree, then run `npm test` |
+| `npm run scenario` | Offline fake-host end-to-end slice with a JSON report |
+| `npm run e2e:web` | Optional real-Chromium mobile scenario; skips without Playwright |
+| `npm run release:artifacts` | Build the archive, checksums, manifest and SBOM for a tag |
 | `npm run review:packet` | Produce the pinned review packet; `--with-tests` adds counts |
 | `npm run hooks:install` | Install the local `pre-commit` hook |
 

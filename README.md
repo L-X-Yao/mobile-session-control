@@ -99,6 +99,8 @@ npm run test:coverage
 npm run precommit
 npm run review:packet -- --with-tests
 npm run hooks:install
+npm run scenario
+npm run e2e:web
 npm run test:soak
 npm run demo:m1
 npm run demo:web
@@ -110,6 +112,11 @@ tree to match, then runs the offline suite;
 pre-commit hook. Hooks enforce process, not user approval, and `--no-verify`
 bypasses them.
 
+`npm run scenario` runs a deterministic offline SITL slice: pair, chat, allow,
+deny, question, malformed host output, pagination, token rotation, close and
+restart replay. `npm run e2e:web` drives the real mobile client in Chromium; it
+needs the optional external `playwright` package (`npm install --no-save
+playwright && npx playwright install chromium`) and skips when it is absent.
 `npm run test:soak` runs the opt-in loopback fake-host soak; set `SOAK_MS` for a
 longer run. `demo:web` starts the relay, session manager and fake session host,
 then prints a mobile web client URL with a one-time pairing code. `demo:real` is
@@ -119,7 +126,9 @@ consume provider quota. See `docs/PHASE9-RUNBOOK.md`.
 
 `packages/cli/src/service.mjs` is the durable relay + manager entrypoint for a
 systemd user unit. See `docs/SERVICE.md`, `docs/BACKUP.md` and
-`deploy/msc-relay.service.example`.
+`deploy/msc-relay.service.example`. Tagged releases are built and published by
+`.github/workflows/release.yml`; see `docs/RELEASE.md` for the checklist and
+artifacts.
 
 The real Claude Code adapter test is opt-in because the Agent SDK and `claude`
 executable are external:

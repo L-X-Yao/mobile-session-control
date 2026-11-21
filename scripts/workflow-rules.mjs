@@ -9,7 +9,7 @@ export const SENSITIVE_PATTERNS = [
     /^packages\/cli\/src\/providers\//,
     /^deploy\//,
     /^apps\/web\/(?:app|sw)\.js$/,
-    /^scripts\/(?:scan-patterns|workflow-rules|precommit|verify|review-packet|install-hooks|backup-state)\.mjs$/,
+    /^scripts\//,
     /^\.github\/workflows\//,
     /^docs\/M1-PROTOCOL\.md$/,
     /^docs\/SESSION-HOST-PROTOCOL\.md$/,
