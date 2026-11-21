@@ -198,7 +198,7 @@ export async function createRelay({
     webDir = null,
     stateFile = null,
     stateKeyFile = null,
-    onPairingConsumed = null,
+    onPairingChanged = null,
     tokenTtlMs = 0,
     rateLimit = 0,
     rateLimitWindowMs = 1000,
@@ -213,8 +213,8 @@ export async function createRelay({
         throw new Error('INVALID_STATE_KEY_FILE');
     }
     if (stateKeyFile !== null && stateFile === null) throw new Error('STATE_KEY_WITHOUT_STATE');
-    if (onPairingConsumed !== null && typeof onPairingConsumed !== 'function') {
-        throw new Error('INVALID_ON_PAIRING_CONSUMED');
+    if (onPairingChanged !== null && typeof onPairingChanged !== 'function') {
+        throw new Error('INVALID_ON_PAIRING_CHANGED');
     }
     if (!Number.isInteger(tokenTtlMs) || tokenTtlMs < 0) throw new Error('INVALID_TOKEN_TTL');
     if (!Number.isInteger(rateLimit) || rateLimit < 0) throw new Error('INVALID_RATE_LIMIT');
@@ -230,10 +230,11 @@ export async function createRelay({
             throw new Error('STATE_TOKEN_CONFLICT');
         }
     }
-    const code = state?.pairingCode ?? pairingCode ?? crypto.randomBytes(4).toString('hex');
+    let code = state?.pairingCode ?? pairingCode ?? crypto.randomBytes(4).toString('hex');
     let pair = state?.pairToken ?? pairToken ?? crypto.randomBytes(24).toString('hex');
     const manager = state?.managerToken ?? managerToken ?? crypto.randomBytes(24).toString('hex');
     const startedAt = Date.now();
+    const startedMono = performance.now();
     let pairIssuedAt = Number.isFinite(state?.pairIssuedAt) ? state.pairIssuedAt : startedAt;
     const managerIssuedAt = Number.isFinite(state?.managerIssuedAt)
         ? state.managerIssuedAt : startedAt;
@@ -264,7 +265,11 @@ export async function createRelay({
         if (typeof token !== 'string') return null;
         const entry = tokens.get(token);
         if (!entry) return null;
-        if (tokenTtlMs > 0 && Date.now() - entry.issuedAt > tokenTtlMs) {
+        // The manager token is an internal daemon credential, not a browser
+        // token. It has no renewal path, so a TTL would break the service at
+        // the first expiry. Device and session tokens keep the TTL.
+        if (tokenTtlMs > 0 && entry.role !== 'manager'
+            && Date.now() - entry.issuedAt > tokenTtlMs) {
             return { ...entry, expired: true };
         }
         return entry;
@@ -321,6 +326,7 @@ export async function createRelay({
     // flushes any pending write.
     let persistTimer = null;
     let lastPersistError = null;
+    let persistErrors = 0;
     function flushPersist() {
         persistTimer = null;
         try {
@@ -330,6 +336,7 @@ export async function createRelay({
             // A failed background write must not crash the relay. Keep the
             // state dirty; the next change or close() retries the snapshot.
             lastPersistError = error;
+            persistErrors += 1;
         }
     }
 
@@ -423,6 +430,51 @@ export async function createRelay({
             return;
         }
 
+        if (req.method === 'GET' && parts.length === 2
+            && parts[0] === 'v1' && parts[1] === 'metrics') {
+            // Loopback monitoring only; counts and uptime, never tokens or
+            // message content. Like /v1/health, it bypasses token auth.
+            const open = [...sessions.values()].filter((session) => !session.closedAt).length;
+            const eventCount = [...sessions.values()]
+                .reduce((sum, session) => sum + session.events.length, 0);
+            const now = Date.now();
+            const activeTokens = [...tokens.values()].filter((entry) => tokenTtlMs === 0
+                || now - entry.issuedAt <= tokenTtlMs).length;
+            const lines = [
+                '# HELP msc_up Relay process is up.',
+                '# TYPE msc_up gauge',
+                'msc_up 1',
+                '# HELP msc_uptime_seconds Relay uptime in seconds.',
+                '# TYPE msc_uptime_seconds gauge',
+                `msc_uptime_seconds ${((performance.now() - startedMono) / 1000).toFixed(3)}`,
+                '# HELP msc_sessions_open Open sessions.',
+                '# TYPE msc_sessions_open gauge',
+                `msc_sessions_open ${open}`,
+                '# HELP msc_sessions_closed Closed sessions retained in memory.',
+                '# TYPE msc_sessions_closed gauge',
+                `msc_sessions_closed ${sessions.size - open}`,
+                '# HELP msc_events_total Events retained in memory.',
+                '# TYPE msc_events_total gauge',
+                `msc_events_total ${eventCount}`,
+                '# HELP msc_tokens_active Active tokens, including the manager token.',
+                '# TYPE msc_tokens_active gauge',
+                `msc_tokens_active ${activeTokens}`,
+                '# HELP msc_persist_errors_total Failed background state writes.',
+                '# TYPE msc_persist_errors_total counter',
+                `msc_persist_errors_total ${persistErrors}`,
+                '# HELP msc_persist_last_error Whether the last background write failed.',
+                '# TYPE msc_persist_last_error gauge',
+                `msc_persist_last_error ${lastPersistError ? 1 : 0}`,
+                '',
+            ];
+            res.writeHead(200, {
+                'content-type': 'text/plain; version=0.0.4; charset=utf-8',
+                'cache-control': 'no-store',
+            });
+            res.end(lines.join('\n'));
+            return;
+        }
+
         if (url.pathname.startsWith('/v1/') && rateLimited(req, bearerToken(req))) {
             const retryAfter = Math.max(1, Math.ceil(rateLimitWindowMs / 1000));
             sendJson(res, 429, { error: 'rate_limited' }, { 'retry-after': String(retryAfter) });
@@ -440,7 +492,7 @@ export async function createRelay({
             pairingConsumed = true;
             persist();
             try {
-                if (typeof onPairingConsumed === 'function') onPairingConsumed();
+                if (typeof onPairingChanged === 'function') onPairingChanged();
             } catch {
                 // Refreshing a local pairing file must not fail a consumed code.
             }
@@ -487,6 +539,64 @@ export async function createRelay({
             }
             persist();
             sendJson(res, 200, { token, role: entry.role, tokenTtlMs });
+            return;
+        }
+
+        if (req.method === 'POST' && parts.length === 3
+            && parts[0] === 'v1' && parts[1] === 'device' && parts[2] === 'revoke') {
+            const entry = tokenEntry(bearerToken(req));
+            if (!sendAuthError(res, entry, ['pair'])) return;
+            // Refuse to clear a live session: its worker and manager cleanup
+            // would outlive the revocation. Close sessions first.
+            if ([...sessions.values()].some((session) => !session.closedAt)) {
+                sendJson(res, 409, { error: 'sessions_active' });
+                return;
+            }
+            // Revoke every device/session token and retained closed history.
+            // The manager token is internal and stays valid so the daemon can
+            // keep running without a restart. Keep a snapshot so a failed
+            // snapshot write cannot leave memory revoked while disk keeps the
+            // old tokens (a restart would silently undo the revocation).
+            const previous = {
+                sessions: new Map(sessions),
+                tokens: new Map(tokens),
+                rateBuckets: new Map(rateBuckets),
+                pair,
+                pairIssuedAt,
+                code,
+                pairingConsumed,
+            };
+            sessions.clear();
+            tokens.clear();
+            rateBuckets.clear();
+            pair = crypto.randomBytes(24).toString('hex');
+            pairIssuedAt = Date.now();
+            tokens.set(pair, { role: 'pair', issuedAt: pairIssuedAt });
+            tokens.set(manager, { role: 'manager', issuedAt: managerIssuedAt });
+            code = crypto.randomBytes(4).toString('hex');
+            pairingConsumed = false;
+            try {
+                persist();
+            } catch {
+                sessions.clear();
+                tokens.clear();
+                rateBuckets.clear();
+                for (const [id, session] of previous.sessions) sessions.set(id, session);
+                for (const [token, entry] of previous.tokens) tokens.set(token, entry);
+                for (const [key, entry] of previous.rateBuckets) rateBuckets.set(key, entry);
+                pair = previous.pair;
+                pairIssuedAt = previous.pairIssuedAt;
+                code = previous.code;
+                pairingConsumed = previous.pairingConsumed;
+                sendJson(res, 500, { error: 'persist_failed' });
+                return;
+            }
+            try {
+                if (typeof onPairingChanged === 'function') onPairingChanged();
+            } catch {
+                // The operator can still read the code from a fresh start.
+            }
+            sendJson(res, 200, { ok: true });
             return;
         }
 
@@ -881,8 +991,8 @@ export async function createRelay({
         host,
         port: actualPort,
         url: `http://${urlHost}:${actualPort}`,
-        pairingCode: code,
-        pairToken: pair,
+        get pairingCode() { return code; },
+        get pairToken() { return pair; },
         managerToken: manager,
         providerCatalog,
         sessions,

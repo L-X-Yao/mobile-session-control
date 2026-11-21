@@ -217,6 +217,61 @@ test('service runs fake sessions, persists state and restarts cleanly', async (t
     assert.equal(await waitExit(service.child), 0, service.output());
 });
 
+test('service rewrites the pairing file after device revocation', async (t) => {
+    const dir = tempDir(t);
+    const configPath = path.join(dir, 'service.json');
+    const stateFile = path.join(dir, 'state.json');
+    const pairingFile = path.join(dir, 'pairing.json');
+    fs.writeFileSync(configPath, `${JSON.stringify({
+        mode: 'fake',
+        host: '127.0.0.1',
+        port: 0,
+        pollMs: 50,
+        provider: PROVIDER,
+        stateFile,
+        pairingFile,
+    })}\n`, { mode: 0o600 });
+
+    const service = spawnService(configPath, dir);
+    t.after(() => {
+        if (service.child.exitCode === null) service.child.kill('SIGKILL');
+    });
+    const pairing = await readPairing(pairingFile);
+    const paired = await call(`${pairing.url}/v1/pair`, {
+        method: 'POST', body: { code: pairing.pairingCode },
+    });
+    assert.equal(paired.status, 200);
+    const pairToken = paired.body.token;
+    const created = await call(`${pairing.url}/v1/sessions`, {
+        token: pairToken,
+        method: 'POST',
+        body: { provider: { ...PROVIDER } },
+    });
+    assert.equal(created.status, 201);
+    const closed = await call(`${pairing.url}/v1/sessions/${created.body.sessionId}/close`, {
+        token: created.body.clientToken, method: 'POST',
+    });
+    assert.equal(closed.status, 200);
+    const revoked = await call(`${pairing.url}/v1/device/revoke`, {
+        token: pairToken, method: 'POST',
+    });
+    assert.equal(revoked.status, 200);
+    await waitFor(() => {
+        const current = JSON.parse(fs.readFileSync(pairingFile, 'utf8'));
+        return current.paired === false && typeof current.pairingCode === 'string'
+            && current.pairingCode.length >= 4;
+    });
+    const old = await call(`${pairing.url}/v1/sessions`, { token: pairToken });
+    assert.equal(old.status, 401);
+    const current = JSON.parse(fs.readFileSync(pairingFile, 'utf8'));
+    const newPair = await call(`${pairing.url}/v1/pair`, {
+        method: 'POST', body: { code: current.pairingCode },
+    });
+    assert.equal(newPair.status, 200);
+    service.child.kill('SIGTERM');
+    assert.equal(await waitExit(service.child), 0, service.output());
+});
+
 test('real mode requires host run roots inside the state directory', async (t) => {
     const dir = tempDir(t);
     const stateDir = path.join(dir, 'state');

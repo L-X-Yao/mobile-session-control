@@ -1,7 +1,8 @@
 # Release process
 
-Status: workflow-defined. The release workflow has not published a release from
-this repository yet; its first tag-triggered run is unverified.
+Status: `v0.1.2` was published by the workflow and its four assets were
+verified. Build-provenance attestations were added after that release, so the
+first attested tag run is pending. Signed tags remain a local operator action.
 
 ## Checklist
 
@@ -9,12 +10,20 @@ this repository yet; its first tag-triggered run is unverified.
    `## <version> — <date>` section.
 2. Run `npm test`, `npm run scenario` and `npm run e2e:web` (Playwright
    installed) locally.
-3. Commit and push all changes; verify CI, CodeQL and Browser E2E are green.
-   Run the soak workflow manually when the release changes runtime behavior.
+3. Commit and push all changes; verify CI, CodeQL, Browser E2E and Scorecard
+   are green. Run the soak workflow manually when the release changes runtime
+   behavior.
 4. Create a tag on the release commit. Signing is recommended but remains a
-   local user action; the workflow does not create or sign tags.
+   local user action; the workflow does not create or sign tags:
+
+   ```sh
+   git tag -s vX.Y.Z -m "vX.Y.Z"   # or: git tag -a ...
+   git tag -v vX.Y.Z
+   ```
+
 5. Push the tag. `.github/workflows/release.yml` runs the offline checks,
-   builds the artifacts, and publishes a GitHub release.
+   builds the artifacts, attests their provenance, and publishes a GitHub
+   release.
 
 Do not move or reuse a published tag. Fix forward with a new patch version.
 
@@ -33,6 +42,16 @@ Do not move or reuse a published tag. Fix forward with a new patch version.
 Verify a download with `sha256sum -c SHA256SUMS` and
 `sha256sum -c MANIFEST.sha256`. The SBOM states that the Claude Agent SDK and
 Claude Code are external, not bundled.
+
+When the release workflow has attestation enabled, verify provenance with:
+
+```sh
+gh attestation verify mobile-session-control-X.Y.Z.tar.gz \
+  -R L-X-Yao/mobile-session-control
+```
+
+A signed tag proves who created the tag; the attestation proves which workflow
+and commit built the artifact.
 
 ## Upgrade and rollback
 

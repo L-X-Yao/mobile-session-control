@@ -1,0 +1,12 @@
+# Triggered by OnFailure= in msc-relay.service. Install beside the relay unit:
+#   cp deploy/msc-relay-alert.service.example ~/.config/systemd/user/msc-relay-alert.service
+#   systemctl --user daemon-reload
+# This writes a journal entry; wire journald or an external monitor to your
+# alert channel. The relay restarts with Restart=on-failure before this fires;
+# this unit reports the terminal failed state.
+[Unit]
+Description=Mobile Session Control relay failure alert
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/logger -t msc-relay-alert "msc-relay failed; check journalctl --user -u msc-relay"

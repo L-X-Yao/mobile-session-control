@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Device revocation: `POST /v1/device/revoke` and a PWA action invalidate the
+  device and session tokens after active sessions are closed; the operator CLI
+  rewrites a stopped service's state for a lost phone. See `docs/REVOCATION.md`.
+- The internal manager token no longer expires with `tokenTtlMs`; the previous
+  behavior could stop the daemon after the configured TTL.
+- `GET /v1/metrics` exposes loopback Prometheus counts; the systemd template
+  adds an `OnFailure` alert unit.
+- `npm run restore:drill` extracts and validates a state backup, including
+  encrypted snapshots, without touching the live service.
+- OpenSSF Scorecard runs on `main` and on a schedule; the release workflow
+  attests build provenance for release artifacts.
+- `docs/PRODUCTION-READINESS.md` records the supported scope, controls,
+  evidence matrix and known `NO_DATA` items.
+- The pairing file is retained after pairing as the operator recovery channel.
 - The scenario suite waits for `turn-end` in the same snapshot as the
   assistant message, removing a Node 22 CI race.
 

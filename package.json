@@ -34,6 +34,8 @@
     "release:artifacts": "node scripts/release-artifacts.mjs",
     "test:soak": "node scripts/soak.mjs",
     "backup:state": "node scripts/backup-state.mjs",
+    "revoke:device": "node scripts/revoke-device.mjs",
+    "restore:drill": "node scripts/restore-drill.mjs",
     "validate:profiles": "node packages/cli/src/providers/validate-cli.mjs examples/providers",
     "demo:m1": "node packages/cli/src/demos/m1-demo.mjs",
     "demo:web": "node packages/cli/src/demos/m1-web-demo.mjs",

@@ -56,6 +56,106 @@ function stateDir() {
     return dir;
 }
 
+test('relay metrics expose counts without auth', async (t) => {
+    const relay = await createRelay({ port: 0, providers: PROVIDERS });
+    t.after(() => relay.close());
+    const response = await fetch(`${relay.url}/v1/metrics`);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-type'), /text\/plain/);
+    const text = await response.text();
+    assert.match(text, /^msc_up 1$/m);
+    assert.match(text, /^msc_uptime_seconds \d+\.\d+$/m);
+    assert.match(text, /^msc_sessions_open 0$/m);
+    assert.match(text, /^msc_tokens_active 2$/m);
+    assert.match(text, /^msc_persist_errors_total 0$/m);
+});
+
+test('relay revokes the device, tokens and closed sessions', async (t) => {
+    let pairingChanges = 0;
+    const relay = await createRelay({
+        port: 0,
+        providers: PROVIDERS,
+        onPairingChanged: () => { pairingChanges += 1; },
+    });
+    t.after(() => relay.close());
+    const pairToken = await pair(relay);
+    const beforeRevoke = pairingChanges;
+    const session = await createSession(relay, pairToken);
+
+    const refused = await call(`${relay.url}/v1/device/revoke`, {
+        token: pairToken, method: 'POST',
+    });
+    assert.equal(refused.status, 409);
+    assert.equal(refused.body.error, 'sessions_active');
+
+    const closed = await call(`${relay.url}/v1/sessions/${session.sessionId}/close`, {
+        token: session.clientToken, method: 'POST',
+    });
+    assert.equal(closed.status, 200);
+    const revoked = await call(`${relay.url}/v1/device/revoke`, {
+        token: pairToken, method: 'POST',
+    });
+    assert.equal(revoked.status, 200);
+    assert.equal(revoked.body.ok, true);
+    assert.equal(pairingChanges, beforeRevoke + 1);
+    assert.equal(relay.sessions.size, 0);
+    assert.equal(relay.pairingConsumed, false);
+
+    const oldPair = await call(`${relay.url}/v1/sessions`, { token: pairToken });
+    assert.equal(oldPair.status, 401);
+    const oldClient = await call(
+        `${relay.url}/v1/sessions/${session.sessionId}/events?after=0`,
+        { token: session.clientToken },
+    );
+    assert.equal(oldClient.status, 401);
+
+    const newPair = await call(`${relay.url}/v1/pair`, {
+        method: 'POST', body: { code: relay.pairingCode },
+    });
+    assert.equal(newPair.status, 200);
+    const list = await call(`${relay.url}/v1/sessions`, { token: newPair.body.token });
+    assert.equal(list.status, 200);
+    assert.equal(list.body.sessions.length, 0);
+});
+
+test('device revocation rolls back when the state write fails', async (t) => {
+    const dir = stateDir();
+    const stateFile = path.join(dir, 'relay.json');
+    const relay = await createRelay({ port: 0, providers: PROVIDERS, stateFile });
+    t.after(async () => {
+        try { fs.chmodSync(dir, 0o700); } catch { /* already restored */ }
+        await relay.close().catch(() => {});
+        fs.rmSync(dir, { recursive: true, force: true });
+    });
+    const pairToken = await pair(relay);
+    const session = await createSession(relay, pairToken);
+    const closed = await call(`${relay.url}/v1/sessions/${session.sessionId}/close`, {
+        token: session.clientToken, method: 'POST',
+    });
+    assert.equal(closed.status, 200);
+
+    fs.chmodSync(dir, 0o500);
+    const revoked = await call(`${relay.url}/v1/device/revoke`, {
+        token: pairToken, method: 'POST',
+    });
+    assert.equal(revoked.status, 500);
+    assert.equal(revoked.body.error, 'persist_failed');
+    fs.chmodSync(dir, 0o700);
+
+    const list = await call(`${relay.url}/v1/sessions`, { token: pairToken });
+    assert.equal(list.status, 200);
+    assert.equal(list.body.sessions.length, 1);
+    assert.equal(relay.pairingConsumed, true);
+});
+
+test('the internal manager token does not expire with tokenTtlMs', async (t) => {
+    const relay = await createRelay({ port: 0, providers: PROVIDERS, tokenTtlMs: 10 });
+    t.after(() => relay.close());
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const list = await call(`${relay.url}/v1/sessions`, { token: relay.managerToken });
+    assert.equal(list.status, 200);
+});
+
 test('relay state persists across a restart', async (t) => {
     const dir = stateDir();
     t.after(() => fs.rmSync(dir, { recursive: true, force: true }));

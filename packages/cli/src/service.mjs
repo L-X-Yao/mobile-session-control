@@ -251,7 +251,7 @@ export async function runService(config) {
             providers,
             stateFile: config.stateFile,
             stateKeyFile: config.stateKeyFile,
-            onPairingConsumed: config.pairingFile
+            onPairingChanged: config.pairingFile
                 ? () => writePairingFile(config.pairingFile, relay)
                 : null,
             tokenTtlMs: config.tokenTtlMs,

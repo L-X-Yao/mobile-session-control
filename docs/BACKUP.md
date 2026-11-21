@@ -32,6 +32,17 @@ absolute paths, and excludes `runs/`. It is safe while the service runs:
 appends. A line being appended during the copy may be truncated, which does not
 affect state recovery.
 
+Run a restore drill after each backup or deployment change:
+
+```sh
+npm run restore:drill -- --backup /private/backup/msc-service-2026-11-20.tgz
+```
+
+It extracts into a temporary directory, rejects unsafe entries and symlinks,
+checks owner-only modes, parses the JSON files and decrypts an encrypted
+snapshot with the archived `state.key` (or `--state-key-file`). It never touches
+the live service.
+
 ## Restore
 
 1. Stop the service: `systemctl --user stop msc-relay`.
@@ -51,6 +62,10 @@ affect state recovery.
 
 If `state.key` and `state.json` are lost together, delete `state.json`, restart
 and re-pair; sessions and tokens are discarded.
+
+A backup taken before device revocation contains the old pair token. Restoring
+it revives that token; revoke the device again immediately after such a restore.
+See `docs/REVOCATION.md`.
 
 ## Retention
 

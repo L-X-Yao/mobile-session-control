@@ -118,6 +118,8 @@ packet. The reviewer confirms the fix and states whether any high/medium remain.
 | `npm run scenario` | Offline fake-host end-to-end slice with a JSON report |
 | `npm run e2e:web` | Optional real-Chromium mobile scenario; skips without Playwright |
 | `npm run release:artifacts` | Build the archive, checksums, manifest and SBOM for a tag |
+| `npm run revoke:device` | Rewrite a stopped service's state and invalidate the paired device |
+| `npm run restore:drill` | Extract and validate a state backup without touching the service |
 | `npm run review:packet` | Produce the pinned review packet; `--with-tests` adds counts |
 | `npm run hooks:install` | Install the local `pre-commit` hook |
 

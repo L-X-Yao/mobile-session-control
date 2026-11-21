@@ -255,6 +255,14 @@ async function main() {
             await waitText(page1, '#session-list', '已关闭');
         });
 
+        await step('revoke device', async () => {
+            page1.once('dialog', (dialog) => dialog.accept());
+            await page1.click('#revoke');
+            await page1.waitForSelector('#pair-view:not([hidden])', { timeout: TIMEOUT });
+            const status = await page1.textContent('#status');
+            if (!status.includes('设备已撤销')) throw new Error(`revoke status: ${status}`);
+        });
+
         if (report.consoleErrors.length > 0 || report.pageErrors.length > 0) {
             throw new Error('browser console or page errors');
         }

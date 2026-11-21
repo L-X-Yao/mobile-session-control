@@ -96,7 +96,7 @@ function matches(node, selector) {
 function makeDocument() {
     const ids = [
         'pair-view', 'sessions-view', 'chat-view', 'status', 'chat', 'input',
-        'composer', 'send', 'back', 'stop', 'close', 'refresh', 'pair-form',
+        'composer', 'send', 'back', 'stop', 'close', 'refresh', 'revoke', 'pair-form',
         'pair-code', 'pair-button', 'pair-error', 'create-form', 'provider',
         'session-list',
     ];
@@ -118,6 +118,7 @@ function makeDocument() {
     elements.get('stop').tagName = 'BUTTON';
     elements.get('close').tagName = 'BUTTON';
     elements.get('refresh').tagName = 'BUTTON';
+    elements.get('revoke').tagName = 'BUTTON';
     elements.get('create-form').appendChild(new FakeElement('button'));
     const listeners = new Map();
     return {
@@ -341,7 +342,7 @@ async function bootSyntheticClient({
     const state = {
         failEvents: false, failRenew: false, eventCalls: 0, commands: [],
         messages, renewals: [], rejectAuth: '', rejections: 0, created: 0,
-        auths: [], listDelay: 0,
+        auths: [], listDelay: 0, revocations: 0, revokeStatus: 0,
     };
     const windowListeners = new Map();
     const window = {
@@ -374,6 +375,13 @@ async function bootSyntheticClient({
         }
         if (parsed.pathname === '/v1/providers') {
             return jsonResponse({ providers: [FAKE_PROVIDER], tokenTtlMs });
+        }
+        if (parsed.pathname === '/v1/device/revoke' && options.method === 'POST') {
+            state.revocations += 1;
+            if (state.revokeStatus) {
+                return jsonResponse({ error: 'sessions_active' }, state.revokeStatus);
+            }
+            return jsonResponse({ ok: true });
         }
         if (parsed.pathname === '/v1/tokens/renew' && options.method === 'POST') {
             state.renewals.push(options.headers?.authorization || '');
@@ -446,6 +454,7 @@ async function bootSyntheticClient({
             setItem: (key, value) => localStorageData.set(key, String(value)),
         },
         fetch: fetchImpl,
+        confirm: () => true,
         Notification: FakeNotification,
         AbortSignal,
         URLSearchParams,
@@ -750,6 +759,48 @@ test('web client adopts an equal-epoch sibling token after a 401', async (t) => 
     state.rejectAuth = 'Bearer client-token';
     await waitFor(() => state.auths.includes('Bearer client-token-sibling'), 4000);
     assert.equal(elements.get('status').textContent.includes('token 无效'), false);
+});
+
+test('web client revokes the device and clears local credentials', async (t) => {
+    const { elements, state, localStorageData } = await bootSyntheticClient({
+        events: [{ seq: 1, type: 'assistant-turn-start' }],
+        ready: (els) => els.get('stop').disabled === false,
+    });
+    t.after(() => { try { elements.get('back').dispatch('click'); } catch { /* best effort */ } });
+    elements.get('revoke').dispatch('click');
+    await waitFor(() => state.revocations === 1);
+    await waitFor(() => elements.get('pair-view').hidden === false);
+    assert.equal(localStorageData.get('msc.deviceToken'), '');
+    assert.equal(localStorageData.get('msc.sessions'), '{}');
+    assert.match(elements.get('status').textContent, /设备已撤销/);
+});
+
+test('web client clears credentials when the revocation token is invalid', async (t) => {
+    const { elements, state, localStorageData } = await bootSyntheticClient({
+        events: [{ seq: 1, type: 'assistant-turn-start' }],
+        ready: (els) => els.get('stop').disabled === false,
+    });
+    t.after(() => { try { elements.get('back').dispatch('click'); } catch { /* best effort */ } });
+    state.rejectAuth = 'Bearer device-token';
+    elements.get('revoke').dispatch('click');
+    await waitFor(() => elements.get('pair-view').hidden === false);
+    assert.equal(localStorageData.get('msc.deviceToken'), '');
+    assert.equal(localStorageData.get('msc.sessions'), '{}');
+    assert.match(elements.get('status').textContent, /设备 token 已失效/);
+});
+
+test('web client keeps credentials when revocation is refused for active sessions', async (t) => {
+    const { elements, state, localStorageData } = await bootSyntheticClient({
+        events: [{ seq: 1, type: 'assistant-turn-start' }],
+        ready: (els) => els.get('stop').disabled === false,
+    });
+    t.after(() => { try { elements.get('back').dispatch('click'); } catch { /* best effort */ } });
+    state.revokeStatus = 409;
+    elements.get('revoke').dispatch('click');
+    await waitFor(() => state.revocations === 1);
+    await waitFor(() => elements.get('status').textContent.includes('请先关闭所有会话'));
+    assert.equal(localStorageData.get('msc.deviceToken'), 'device-token');
+    assert.notEqual(localStorageData.get('msc.sessions'), '{}');
 });
 
 test('a stale tab save keeps a session created by a sibling tab', async (t) => {

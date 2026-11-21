@@ -77,7 +77,9 @@ AES-256-GCM 快照状态。管理器对崩溃 worker 做有界退避重启，清
 ## 安全默认
 
 默认只监听环回地址、隔离 provider profile、远程访问需单独批准。公开中继、真实会话
-数据、凭据、备份与运行证据不得提交。
+数据、凭据、备份与运行证据不得提交。设备丢失与恢复见
+[REVOCATION](docs/REVOCATION.md)；生产范围与证据矩阵见
+[PRODUCTION-READINESS](docs/PRODUCTION-READINESS.md)。
 
 ## 许可
 

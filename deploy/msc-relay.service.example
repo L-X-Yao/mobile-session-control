@@ -17,6 +17,9 @@
 [Unit]
 Description=Mobile Session Control loopback relay
 After=network.target
+OnFailure=msc-relay-alert.service
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Service]
 Type=simple

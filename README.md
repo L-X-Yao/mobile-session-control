@@ -99,6 +99,8 @@ npm run test:coverage
 npm run precommit
 npm run review:packet -- --with-tests
 npm run hooks:install
+npm run revoke:device -- --state-file <absolute>
+npm run restore:drill -- --backup <absolute.tgz>
 npm run scenario
 npm run e2e:web
 npm run test:soak
@@ -128,7 +130,9 @@ consume provider quota. See `docs/PHASE9-RUNBOOK.md`.
 systemd user unit. See `docs/SERVICE.md`, `docs/BACKUP.md` and
 `deploy/msc-relay.service.example`. Tagged releases are built and published by
 `.github/workflows/release.yml`; see `docs/RELEASE.md` for the checklist and
-artifacts.
+artifacts. Device loss and recovery are covered in `docs/REVOCATION.md`; the
+supported production scope and evidence matrix are in
+`docs/PRODUCTION-READINESS.md`.
 
 The real Claude Code adapter test is opt-in because the Agent SDK and `claude`
 executable are external:

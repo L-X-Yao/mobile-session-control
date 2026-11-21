@@ -25,6 +25,7 @@ const backButton = document.getElementById('back');
 const stopButton = document.getElementById('stop');
 const closeButton = document.getElementById('close');
 const refreshButton = document.getElementById('refresh');
+const revokeButton = document.getElementById('revoke');
 const pairForm = document.getElementById('pair-form');
 const pairCode = document.getElementById('pair-code');
 const pairButton = document.getElementById('pair-button');
@@ -539,6 +540,39 @@ async function loadSessions() {
         }
         show('sessions');
         setStatus(`会话列表加载失败：${error.message}`);
+    }
+}
+
+function clearLocalDevice() {
+    deviceToken = null;
+    sessions = {};
+    storageSet(DEVICE_KEY, '');
+    storageSet(SESSIONS_KEY, '{}');
+    pairCode.value = '';
+    pairError.textContent = '';
+    show('pair');
+}
+
+async function revokeDevice() {
+    if (!deviceToken || revokeButton.disabled) return;
+    if (typeof confirm === 'function'
+        && !confirm('撤销后需在电脑端重新配对，已关闭的会话记录会被清除。继续？')) return;
+    revokeButton.disabled = true;
+    try {
+        await request('/v1/device/revoke', { token: deviceToken, method: 'POST' });
+        clearLocalDevice();
+        setStatus('设备已撤销，请在电脑端读取新配对码');
+    } catch (error) {
+        if (error.status === 401 || error.status === 403) {
+            // The token is already invalid; keeping it would strand this tab.
+            clearLocalDevice();
+            setStatus('设备 token 已失效，请重新配对');
+            return;
+        }
+        setStatus(error.status === 409
+            ? '请先关闭所有会话再撤销设备' : `撤销失败：${error.message}`);
+    } finally {
+        revokeButton.disabled = false;
     }
 }
 
@@ -1292,6 +1326,7 @@ if (typeof document !== 'undefined' && typeof document.addEventListener === 'fun
         schedulePoll(0);
     });
 }
+revokeButton.addEventListener('click', () => { void revokeDevice(); });
 backButton.addEventListener('click', leaveChat);
 stopButton.addEventListener('click', () => { void stopTurn(); });
 closeButton.addEventListener('click', () => { void closeSession(); });

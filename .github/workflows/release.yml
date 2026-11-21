@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 concurrency:
   group: release-${{ github.ref }}
@@ -30,6 +32,10 @@ jobs:
         run: npm run scenario
       - name: Build release artifacts
         run: node scripts/release-artifacts.mjs --out dist
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
+        with:
+          subject-path: 'dist/*'
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

@@ -29,7 +29,7 @@ inside the config are rejected. Required and optional fields:
 | `eventLog` | real only | Absolute JSONL host-event log, created mode 0600 |
 | `eventLogMaxBytes` | no | Rotate the event log at this size, 0-1000000000 (`0` disables), default 10 MiB |
 | `eventLogKeep` | no | Rotated archives kept as `<file>.1..N`, 0-10 (`0` truncates), default 2 |
-| `tokenTtlMs` | no | Token lifetime; `0` disables expiry, default `0` |
+| `tokenTtlMs` | no | Device/session token lifetime; `0` disables expiry, default `0`. The internal manager token does not expire |
 | `rateLimit` | no | Requests per token/address per window; `0` disables, default `0` |
 | `rateLimitWindowMs` | no | Rate-limit window, default 1000 |
 | `maxClosedSessions` | no | Retained closed sessions, 0-1000, default 100 |
@@ -75,11 +75,12 @@ Run it in the foreground:
 MSC_SERVICE_CONFIG=/absolute/private/service.json node packages/cli/src/service.mjs
 ```
 
-Open the `url` in `pairingFile` on the phone, pair once, then delete the pairing
-file. The pairing code is single-use and stays consumed across restarts; after
-consumption a rewritten pairing file has `paired: true` and
-`pairingCode: null`. The service logs the URL and the pairing-file path, never
-the pairing code or a token.
+Open the `url` in `pairingFile` on the phone and pair once. Keep the pairing
+file: it is the operator's recovery channel for device revocation and no longer
+contains a usable code after pairing. The pairing code is single-use and stays
+consumed across restarts; after consumption a rewritten pairing file has
+`paired: true` and `pairingCode: null`. The service logs the URL and the
+pairing-file path, never the pairing code or a token. See `docs/REVOCATION.md`.
 
 ## Real mode
 
@@ -144,6 +145,37 @@ service can actually write. Use a separate writable root such as
 Fake-mode host homes live under the unit's private `/tmp` and do not need a
 writable repository path. The repository and config stay read-only to the
 service.
+
+## Metrics and failure alert
+
+`GET /v1/metrics` returns Prometheus text on loopback without a token:
+uptime, open/closed session counts, retained events, active tokens and state
+write failures. It exposes counts only, never tokens or message content. Scrape
+it from the host or a private-network monitor; do not expose it publicly.
+
+The unit template sets `OnFailure=msc-relay-alert.service` and a start-limit
+window. Install `deploy/msc-relay-alert.service.example` beside the relay unit;
+it writes a journald alert when the relay reaches the failed state after its
+restart attempts. Route that journal entry to your own alert channel:
+
+```sh
+cp deploy/msc-relay-alert.service.example ~/.config/systemd/user/msc-relay-alert.service
+systemctl --user daemon-reload
+```
+
+## Revocation
+
+The web client can revoke its own device after all sessions are closed. For a
+lost phone, stop the service and run:
+
+```sh
+npm run revoke:device -- \
+  --state-file /home/<user>/msc-service/state.json \
+  --state-key-file /home/<user>/msc-service/state.key
+```
+
+Then restart and pair the replacement phone with the new code in the pairing
+file. Revocation clears retained sessions. See `docs/REVOCATION.md`.
 
 ## Startup errors
 

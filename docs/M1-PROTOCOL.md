@@ -44,10 +44,11 @@ with AES-256-GCM. A key configured against a plaintext file returns
 `STATE_FILE_ENCRYPTED`; a wrong key returns `STATE_FILE_DECRYPT_FAILED`. Key and
 file permission/owner failures return `STATE_KEY_FILE_*` / `STATE_FILE_*`
 startup errors rather than silently downgrading.
-Optional `tokenTtlMs` expires pair, manager and session tokens
-(`401 token_expired`). A live pair or client token can be rotated before expiry
-with `POST /v1/tokens/renew`; rotation revokes the previous token immediately.
-An expired token cannot be renewed, so recovery still means re-pairing (or
+Optional `tokenTtlMs` expires pair and session tokens
+(`401 token_expired`). The internal manager token does not expire because it has
+no renewal path. A live pair or client token can be rotated before expiry with
+`POST /v1/tokens/renew`; rotation revokes the previous token immediately. An
+expired token cannot be renewed, so recovery still means re-pairing (or
 removing the state file, which discards sessions).
 `rateLimit` and `rateLimitWindowMs` return `429 rate_limited` with `Retry-After`;
 unknown bearer strings share the address bucket and cannot mint fresh buckets. The pair token can create multiple
@@ -68,8 +69,10 @@ message/event history readable by its client and worker tokens until eviction.
 | GET | `/icons/icon-192.png` | no | none | PWA icon |
 | GET | `/icons/icon-512.png` | no | none | PWA icon |
 | GET | `/v1/health` | no | none | `{ status: "ok", loopback: true }` |
+| GET | `/v1/metrics` | no | none | Prometheus text counts; loopback only, no tokens or content |
 | POST | `/v1/pair` | no | `{ code }` | `{ token, tokenTtlMs }` (pair token) |
 | POST | `/v1/tokens/renew` | pair or client | none | `{ token, role, tokenTtlMs }`; the presented token is revoked |
+| POST | `/v1/device/revoke` | pair | none | `{ ok: true }`; revokes device/session tokens and closed history; refuses with `409 sessions_active` |
 | GET | `/v1/providers` | pair or manager | none | `{ providers: [...], tokenTtlMs }` |
 | GET | `/v1/sessions` | pair or manager | none | `{ sessions: [...], tokenTtlMs }`; manager rows include `workerToken` |
 | POST | `/v1/sessions` | pair or manager | `{ provider: { id, model, effort, transport } }` | `{ sessionId, clientToken, createdAt, tokenTtlMs }`; manager response adds `workerToken` |
@@ -102,7 +105,7 @@ manager-authenticated rows additionally include `workerToken`.
 | 401 | `invalid_pairing_code`, `unauthorized`, `token_expired` | Pairing, missing/unknown/revoked bearer, or expired token |
 | 403 | `forbidden` | Wrong session or role token |
 | 404 | `not_found`, `session_not_found` | Unknown route or session |
-| 409 | `session_closed`, `permission_already_pending`, `permission_request_reused`, `permission_not_pending`, `question_not_pending` | Closed session, duplicate pending request, reused request ID, stale decision or answer, or a request-kind mismatch |
+| 409 | `session_closed`, `sessions_active`, `permission_already_pending`, `permission_request_reused`, `permission_not_pending`, `question_not_pending` | Closed session, revocation with an active session, duplicate pending request, reused request ID, stale decision or answer, or a request-kind mismatch |
 | 413 | `BODY_TOO_LARGE` | Request body over 1 MiB |
 | 415 | `UNSUPPORTED_CONTENT_TYPE` | Content-Type is not `application/json` |
 | 429 | `rate_limited` | Per-token or per-address request budget exhausted; `Retry-After` is set |
