@@ -4,8 +4,10 @@
 // production authentication. The caller supplies the web client directory;
 // the relay has no knowledge of the repository layout.
 import crypto from 'node:crypto';
+import { lookup } from 'node:dns/promises';
 import fs from 'node:fs';
 import http from 'node:http';
+import net from 'node:net';
 import path from 'node:path';
 
 import {
@@ -20,6 +22,74 @@ import {
     serializeSession,
 } from './relay/state.mjs';
 
+
+function privatePushHost(host) {
+    const name = String(host || '').toLowerCase().replace(/^\[|\]$/g, '');
+    if (name === 'localhost' || name.endsWith('.localhost')) return true;
+    const version = net.isIP(name);
+    if (version === 4) {
+        const octets = name.split('.').map(Number);
+        return octets[0] === 0 || octets[0] === 10 || octets[0] === 127
+            || (octets[0] === 169 && octets[1] === 254)
+            || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31)
+            || (octets[0] === 192 && octets[1] === 168);
+    }
+    if (version === 6) {
+        if (name === '::1' || name === '::') return true;
+        if (name.startsWith('fc') || name.startsWith('fd')) return true;
+        if (name.startsWith('fe8') || name.startsWith('fe9')
+            || name.startsWith('fea') || name.startsWith('feb')) return true;
+        const mapped = name.startsWith('::ffff:')
+            ? name.slice('::ffff:'.length)
+            : (name.startsWith('64:ff9b:') ? name.slice('64:ff9b:'.length) : null);
+        if (mapped !== null) {
+            if (net.isIP(mapped) === 4) return privatePushHost(mapped);
+            const groups = mapped.split(':').filter(Boolean);
+            if (groups.length >= 2 && groups.slice(-2)
+                .every((part) => /^[0-9a-f]{1,4}$/.test(part))) {
+                const value = (parseInt(groups.at(-2), 16) * 65536)
+                    + parseInt(groups.at(-1), 16);
+                return privatePushHost([
+                    (value >>> 24) & 255, (value >>> 16) & 255,
+                    (value >>> 8) & 255, value & 255,
+                ].join('.'));
+            }
+        }
+    }
+    return false;
+}
+
+function validPushEndpoint(value) {
+    if (typeof value !== 'string' || value.length === 0 || value.length > 2048) return false;
+    let url;
+    try {
+        url = new URL(value);
+    } catch {
+        return false;
+    }
+    if (url.username || url.password) return false;
+    const testLoopback = process.env.MSC_PUSH_TEST_LOOPBACK === '1'
+        && url.protocol === 'http:'
+        && (url.hostname === '127.0.0.1' || url.hostname === 'localhost');
+    if (url.protocol !== 'https:' && !testLoopback) return false;
+    if (!testLoopback && privatePushHost(url.hostname)) return false;
+    return true;
+}
+
+async function resolveSafePushEndpoint(value) {
+    if (!validPushEndpoint(value)) return false;
+    const url = new URL(value);
+    const host = url.hostname.replace(/^\[|\]$/g, '');
+    if (net.isIP(host)) return true;
+    let addresses;
+    try {
+        addresses = await lookup(host, { all: true, verbatim: true });
+    } catch {
+        return false;
+    }
+    if (addresses.length === 0) return false;
+    return addresses.every((entry) => !privatePushHost(entry.address));
+}
 
 function validateProvider(provider) {
     if (!provider || typeof provider !== 'object' || Array.isArray(provider)) {
@@ -258,6 +328,10 @@ export async function createRelay({
     const tokens = new Map();
     const rateBuckets = new Map();
     let pairingConsumed = Boolean(state?.pairingConsumed);
+    const pushEndpoints = new Set(
+        Array.isArray(state?.pushEndpoints)
+            ? state.pushEndpoints.filter(validPushEndpoint) : [],
+    );
     tokens.set(pair, { role: 'pair', issuedAt: pairIssuedAt });
     tokens.set(manager, { role: 'manager', issuedAt: managerIssuedAt });
 
@@ -361,6 +435,7 @@ export async function createRelay({
             managerToken: manager,
             pairIssuedAt,
             managerIssuedAt,
+            pushEndpoints: [...pushEndpoints],
             sessions: [...sessions.values()].map(serializeSession),
         };
         const serialized = stateKey ? encryptState(data, stateKey) : data;
@@ -402,6 +477,25 @@ export async function createRelay({
         });
     }
     if (evictClosedSessions()) persist();
+
+    function notifyPush(payload) {
+        if (pushEndpoints.size === 0) return;
+        const body = JSON.stringify(payload);
+        for (const endpoint of pushEndpoints) {
+            void resolveSafePushEndpoint(endpoint).then((safe) => {
+                if (!safe) return;
+                return fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body,
+                    redirect: 'error',
+                    signal: AbortSignal.timeout(5000),
+                }).catch(() => {
+                    // Push delivery is best effort and must not fail the turn.
+                });
+            }).catch(() => {});
+        }
+    }
 
     async function handle(req, res) {
         const url = new URL(req.url, 'http://127.0.0.1');
@@ -569,6 +663,7 @@ export async function createRelay({
             sessions.clear();
             tokens.clear();
             rateBuckets.clear();
+            pushEndpoints.clear();
             pair = crypto.randomBytes(24).toString('hex');
             pairIssuedAt = Date.now();
             tokens.set(pair, { role: 'pair', issuedAt: pairIssuedAt });
@@ -596,6 +691,42 @@ export async function createRelay({
             } catch {
                 // The operator can still read the code from a fresh start.
             }
+            sendJson(res, 200, { ok: true });
+            return;
+        }
+
+        if (req.method === 'POST' && parts.length === 3
+            && parts[0] === 'v1' && parts[1] === 'push' && parts[2] === 'register') {
+            const entry = tokenEntry(bearerToken(req));
+            if (!sendAuthError(res, entry, ['pair'])) return;
+            const body = await readBodyOrRespond(req, res);
+            if (!body) return;
+            if (!(await resolveSafePushEndpoint(body.endpoint))) {
+                sendJson(res, 400, { error: 'invalid_push_endpoint' });
+                return;
+            }
+            if (!pushEndpoints.has(body.endpoint) && pushEndpoints.size >= 8) {
+                sendJson(res, 409, { error: 'push_endpoint_limit' });
+                return;
+            }
+            pushEndpoints.add(body.endpoint);
+            persist();
+            sendJson(res, 201, { ok: true });
+            return;
+        }
+
+        if (req.method === 'POST' && parts.length === 3
+            && parts[0] === 'v1' && parts[1] === 'push' && parts[2] === 'unregister') {
+            const entry = tokenEntry(bearerToken(req));
+            if (!sendAuthError(res, entry, ['pair'])) return;
+            const body = await readBodyOrRespond(req, res);
+            if (!body) return;
+            if (typeof body.endpoint !== 'string') {
+                sendJson(res, 400, { error: 'invalid_push_endpoint' });
+                return;
+            }
+            pushEndpoints.delete(body.endpoint);
+            persist();
             sendJson(res, 200, { ok: true });
             return;
         }
@@ -936,6 +1067,14 @@ export async function createRelay({
                 session.pendingKind = null;
             }
             session.events.push(event);
+            if (body.type === 'permission-request' || body.type === 'question-request') {
+                notifyPush({
+                    type: 'approval',
+                    kind: body.type === 'question-request' ? 'question' : 'permission',
+                    sessionId: session.id,
+                    requestId: body.requestId,
+                });
+            }
             if (maxEventsPerSession > 0 && session.events.length > maxEventsPerSession) {
                 // Keep the newest events; sequence numbers stay monotonic and
                 // eventId de-duplication keeps working for dropped entries.

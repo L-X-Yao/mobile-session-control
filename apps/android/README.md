@@ -29,7 +29,8 @@ not in this repository and must never be committed.
 
 ## Not implemented yet
 
-- Push notifications (FCM/ntfy/UnifiedPush); design in `docs/PUSH.md`.
+- Push delivery requires a UnifiedPush distributor (for example ntfy); the app
+  connector is implemented, enrollment/delivery is `NO_DATA`.
 - Token renewal/TTL handling in the app.
 - `security-crypto` is on the 1.1.0 alpha line; migrate when the stable
   replacement ships.

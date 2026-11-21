@@ -7,6 +7,8 @@
   EncryptedSharedPreferences. Debug APK builds and lint passes; push and release
   signing are later.
 - New Android CI workflow builds the debug APK and runs lint.
+- Relay push registration and Android UnifiedPush connector; delivery still
+  needs a distributor (ntfy or compatible) and remains `NO_DATA`.
 - New experimental native-session mode: `npm run native:list` inventories local
   Claude Code sessions; `npm run native` exposes them as phone providers and
   resumes a selected session through the Agent SDK, forking active sessions.

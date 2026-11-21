@@ -159,6 +159,26 @@ class MscClient {
         )
     }
 
+    fun registerPush(baseUrl: String, token: String, endpoint: String) {
+        request(
+            baseUrl,
+            "/v1/push/register",
+            token,
+            "POST",
+            JSONObject().put("endpoint", endpoint),
+        )
+    }
+
+    fun unregisterPush(baseUrl: String, token: String, endpoint: String) {
+        request(
+            baseUrl,
+            "/v1/push/unregister",
+            token,
+            "POST",
+            JSONObject().put("endpoint", endpoint),
+        )
+    }
+
     fun questionAnswer(
         baseUrl: String,
         token: String,

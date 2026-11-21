@@ -73,6 +73,8 @@ message/event history readable by its client and worker tokens until eviction.
 | POST | `/v1/pair` | no | `{ code }` | `{ token, tokenTtlMs }` (pair token) |
 | POST | `/v1/tokens/renew` | pair or client | none | `{ token, role, tokenTtlMs }`; the presented token is revoked |
 | POST | `/v1/device/revoke` | pair | none | `{ ok: true }`; revokes device/session tokens and closed history; refuses with `409 sessions_active` |
+| POST | `/v1/push/register` | pair | `{ endpoint }` | `{ ok: true }`; public HTTPS endpoint, max 8 |
+| POST | `/v1/push/unregister` | pair | `{ endpoint }` | `{ ok: true }`; removes a stored endpoint |
 | GET | `/v1/providers` | pair or manager | none | `{ providers: [...], tokenTtlMs }` |
 | GET | `/v1/sessions` | pair or manager | none | `{ sessions: [...], tokenTtlMs }`; manager rows include `workerToken` |
 | POST | `/v1/sessions` | pair or manager | `{ provider: { id, model, effort, transport } }` | `{ sessionId, clientToken, createdAt, tokenTtlMs }`; manager response adds `workerToken` |
@@ -101,11 +103,11 @@ manager-authenticated rows additionally include `workerToken`.
 | 200 | none | health, pair, close, session/message/event reads |
 | 200 | `duplicate: true` | Event POST whose `eventId` was already stored; returns the original sequence |
 | 201 | none | session, message or event created |
-| 400 | `provider_required`, `invalid_provider_*`, `invalid_message_content`, `invalid_event_*`, `invalid_permission_request`, `invalid_question_request`, `invalid_command_*` (including `invalid_command_answers`), `invalid_turn_*`, `invalid_after`, `invalid_limit`, `invalid_body`, `INVALID_JSON`, `BODY_NOT_OBJECT` | Validation failure |
+| 400 | `invalid_push_endpoint`, `provider_required`, `invalid_provider_*`, `invalid_message_content`, `invalid_event_*`, `invalid_permission_request`, `invalid_question_request`, `invalid_command_*` (including `invalid_command_answers`), `invalid_turn_*`, `invalid_after`, `invalid_limit`, `invalid_body`, `INVALID_JSON`, `BODY_NOT_OBJECT` | Validation failure |
 | 401 | `invalid_pairing_code`, `unauthorized`, `token_expired` | Pairing, missing/unknown/revoked bearer, or expired token |
 | 403 | `forbidden` | Wrong session or role token |
 | 404 | `not_found`, `session_not_found` | Unknown route or session |
-| 409 | `session_closed`, `sessions_active`, `permission_already_pending`, `permission_request_reused`, `permission_not_pending`, `question_not_pending` | Closed session, revocation with an active session, duplicate pending request, reused request ID, stale decision or answer, or a request-kind mismatch |
+| 409 | `session_closed`, `sessions_active`, `push_endpoint_limit`, `permission_already_pending`, `permission_request_reused`, `permission_not_pending`, `question_not_pending` | Closed session, revocation with an active session, duplicate pending request, reused request ID, stale decision or answer, or a request-kind mismatch |
 | 413 | `BODY_TOO_LARGE` | Request body over 1 MiB |
 | 415 | `UNSUPPORTED_CONTENT_TYPE` | Content-Type is not `application/json` |
 | 429 | `rate_limited` | Per-token or per-address request budget exhausted; `Retry-After` is set |

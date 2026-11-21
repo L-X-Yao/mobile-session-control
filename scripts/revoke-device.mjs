@@ -57,6 +57,7 @@ const next = {
     pairingConsumed: false,
     pairIssuedAt: Date.now(),
     sessions: [],
+    pushEndpoints: [],
 };
 const serialized = key ? encryptState(next, key) : next;
 const tmp = `${stateFile}.revoke-${process.pid}.tmp`;

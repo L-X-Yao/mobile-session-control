@@ -45,7 +45,10 @@ class MscViewModel(application: Application) : AndroidViewModel(application) {
     private var pollJob: Job? = null
 
     init {
-        if (store.deviceToken != null) loadSessions()
+        if (store.deviceToken != null) {
+            loadSessions()
+            registerStoredPush()
+        }
     }
 
     fun setBaseUrl(value: String) = _state.update { it.copy(baseUrl = value) }
@@ -71,11 +74,21 @@ class MscViewModel(application: Application) : AndroidViewModel(application) {
                     it.copy(busy = false, screen = Screen.Sessions, code = "", status = "已配对")
                 }
                 loadSessions()
+                registerStoredPush()
             } catch (error: Exception) {
                 _state.update {
                     it.copy(busy = false, error = pairError(error), status = "未配对")
                 }
             }
+        }
+    }
+
+    private fun registerStoredPush() {
+        val endpoint = store.pushEndpoint ?: return
+        val base = store.baseUrl ?: return
+        val token = store.deviceToken ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { client.registerPush(base, token, endpoint) }
         }
     }
 

@@ -1,8 +1,8 @@
 # Push notifications
 
-Status: **not implemented.** The Android app is foreground/polling only. This
-note records the design choice so the next batch does not commit to a provider
-by accident.
+Status: relay endpoint registration and the Android UnifiedPush connector are
+implemented. End-to-end delivery still requires a distributor (for example the
+ntfy app) and is `NO_DATA`.
 
 ## Options
 
@@ -38,8 +38,19 @@ fallback only if delivery reliability outweighs that boundary.
 - The payload contains only the session/request identifiers needed to open the
   right card.
 
+## Implemented
+
+- `POST /v1/push/register` stores an HTTPS endpoint with the pair token;
+  hostnames are resolved and every resolved address must be public. At most
+  eight endpoints are stored.
+- `POST /v1/push/unregister` removes an endpoint; revocation clears all.
+- Approval/question events POST a minimal payload (type, kind, sessionId,
+  requestId) with a short timeout; failures are ignored.
+- The Android app registers through UnifiedPush and posts a generic local
+  notification on receipt; it never includes tool detail or message content.
+- Device revocation clears stored push endpoints.
+
 ## Remaining work
 
-- Relay endpoint storage and outbound delivery, with tests.
-- UnifiedPush connector in the Android app and distributor setup docs.
+- Distributor setup documentation and end-to-end delivery evidence.
 - Delivery evidence on the real phone, including Tailscale-off behavior.

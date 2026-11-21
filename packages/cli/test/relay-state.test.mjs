@@ -4,6 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { createRelay } from '../../server/src/relay.mjs';
@@ -154,6 +155,77 @@ test('the internal manager token does not expire with tokenTtlMs', async (t) => 
     await new Promise((resolve) => setTimeout(resolve, 30));
     const list = await call(`${relay.url}/v1/sessions`, { token: relay.managerToken });
     assert.equal(list.status, 200);
+});
+
+test('relay registers a push endpoint and sends a minimal approval payload', async (t) => {
+    process.env.MSC_PUSH_TEST_LOOPBACK = '1';
+    t.after(() => { delete process.env.MSC_PUSH_TEST_LOOPBACK; });
+    const received = [];
+    const server = http.createServer((request, response) => {
+        let body = '';
+        request.setEncoding('utf8');
+        request.on('data', (chunk) => { body += chunk; });
+        request.on('end', () => {
+            received.push({ path: request.url, body });
+            response.writeHead(204);
+            response.end();
+        });
+    });
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    t.after(() => new Promise((resolve) => server.close(resolve)));
+    const relay = await createRelay({ port: 0, providers: PROVIDERS });
+    t.after(() => relay.close());
+    const pairToken = await pair(relay);
+    const session = await createSession(relay, pairToken);
+    const bad = await call(`${relay.url}/v1/push/register`, {
+        token: pairToken,
+        method: 'POST',
+        body: { endpoint: 'http://example.com/push' },
+    });
+    assert.equal(bad.status, 400);
+    assert.equal(bad.body.error, 'invalid_push_endpoint');
+    for (const endpoint of [
+        'https://[::ffff:10.0.0.1]/push',
+        'https://[64:ff9b::a00:1]/push',
+    ]) {
+        const mapped = await call(`${relay.url}/v1/push/register`, {
+            token: pairToken,
+            method: 'POST',
+            body: { endpoint },
+        });
+        assert.equal(mapped.status, 400, endpoint);
+        assert.equal(mapped.body.error, 'invalid_push_endpoint');
+    }
+    const registered = await call(`${relay.url}/v1/push/register`, {
+        token: pairToken,
+        method: 'POST',
+        body: { endpoint: `http://127.0.0.1:${server.address().port}/push` },
+    });
+    assert.equal(registered.status, 201);
+    const event = await call(`${relay.url}/v1/sessions/${session.sessionId}/events`, {
+        token: session.workerToken,
+        method: 'POST',
+        body: {
+            type: 'permission-request',
+            requestId: 'perm_push_1',
+            tool: 'Bash',
+            detail: 'secret detail must not be pushed',
+        },
+    });
+    assert.equal(event.status, 201);
+    const deadline = Date.now() + 3000;
+    while (received.length === 0 && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    assert.equal(received.length, 1);
+    const payload = JSON.parse(received[0].body);
+    assert.deepEqual(payload, {
+        type: 'approval',
+        kind: 'permission',
+        sessionId: session.sessionId,
+        requestId: 'perm_push_1',
+    });
+    assert.doesNotMatch(received[0].body, /secret detail/);
 });
 
 test('relay state persists across a restart', async (t) => {

@@ -29,6 +29,12 @@ class MscStore(context: Context) {
             prefs.edit { putString(KEY_DEVICE, value) }
         }
 
+    var pushEndpoint: String?
+        get() = prefs.getString(KEY_PUSH, null)
+        set(value) {
+            prefs.edit { putString(KEY_PUSH, value) }
+        }
+
     fun sessionToken(sessionId: String): String? {
         val map = sessionTokens()
         return map[sessionId]
@@ -62,5 +68,6 @@ class MscStore(context: Context) {
         const val KEY_BASE = "base_url"
         const val KEY_DEVICE = "device_token"
         const val KEY_SESSIONS = "session_tokens"
+        const val KEY_PUSH = "push_endpoint"
     }
 }
