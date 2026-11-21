@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.2 — 2026-11-21
+
 - A failed debounced snapshot write is captured instead of crashing; the next
   change or `close()` retries, and a failed close still stops the server.
 - Rate-limit windows use the monotonic clock, so wall-clock steps cannot extend
