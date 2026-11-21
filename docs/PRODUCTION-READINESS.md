@@ -43,7 +43,8 @@ Android parity, iOS-specific packaging.
 | Android app lock / QR | Biometric prompt appears on launch; unlock and QR scan not automated | `NO_DATA` |
 | Android real Bash approval | The prompt returned text without a Bash tool call; no permission event | `NO_DATA` |
 | Android CI | Workflow added; first run pending | `NO_DATA` |
-| Android push | Relay endpoint + UnifiedPush connector implemented; no distributor/delivery evidence | `NO_DATA` |
+| Android push | Self-hosted ntfy delivered a generic approval notification for a synthetic permission event | PASS (synthetic) |
+| Provider-driven push | No real provider approval notification was triggered | `NO_DATA` |
 | Device revocation | Relay/service/web tests, operator CLI encrypted-state test | PASS |
 | Real-phone revocation | 2026-11-21, ADB: revoke, new pairing code, re-pair; no provider call | PASS |
 | Native session takeover | Fake-SDK listing/resume/fork integration; real session resume not run | `NO_DATA` |

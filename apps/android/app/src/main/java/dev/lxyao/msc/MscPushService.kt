@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
+import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -22,6 +23,7 @@ class MscPushService : PushService() {
 
     override fun onCreate() {
         super.onCreate()
+        Log.d(TAG, "created")
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(
             NotificationChannel(
@@ -35,13 +37,14 @@ class MscPushService : PushService() {
     }
 
     override fun onNewEndpoint(endpoint: PushEndpoint, instance: String) {
+        Log.d(TAG, "endpoint received")
         val store = MscStore(this)
         store.pushEndpoint = endpoint.url
         register(endpoint.url, store)
     }
 
     override fun onMessage(message: PushMessage, instance: String) {
-        if (!message.decrypted) return
+        Log.d(TAG, "message received (decrypted=${message.decrypted})")
         val payload = runCatching {
             JSONObject(String(message.content, StandardCharsets.UTF_8))
         }.getOrNull() ?: return
@@ -64,7 +67,7 @@ class MscPushService : PushService() {
         runCatching {
             getSystemService(NotificationManager::class.java)
                 .notify(requestId.hashCode(), notification)
-        }
+        }.onFailure { Log.w(TAG, "notify failed: ${it.message}") }
     }
 
     override fun onRegistrationFailed(reason: FailedReason, instance: String) {
@@ -94,10 +97,13 @@ class MscPushService : PushService() {
         val token = store.deviceToken ?: return
         scope.launch {
             runCatching { MscClient().registerPush(base, token, endpoint) }
+                .onSuccess { Log.d(TAG, "endpoint registered") }
+                .onFailure { Log.w(TAG, "endpoint registration failed: ${it.javaClass.simpleName}") }
         }
     }
 
     private companion object {
+        const val TAG = "MscPushService"
         const val CHANNEL = "msc_approvals"
     }
 }

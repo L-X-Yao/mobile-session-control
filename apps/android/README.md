@@ -29,8 +29,9 @@ not in this repository and must never be committed.
 
 ## Not implemented yet
 
-- Push delivery requires a UnifiedPush distributor (for example ntfy); the app
-  connector is implemented, enrollment/delivery is `NO_DATA`.
+- Push delivery uses a UnifiedPush distributor (for example ntfy); enrollment
+  and synthetic notification delivery are verified, provider-driven delivery is
+  `NO_DATA`.
 - Token renewal/TTL handling in the app.
 - `security-crypto` is on the 1.1.0 alpha line; migrate when the stable
   replacement ships.

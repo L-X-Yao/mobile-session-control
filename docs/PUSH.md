@@ -1,8 +1,9 @@
 # Push notifications
 
 Status: relay endpoint registration and the Android UnifiedPush connector are
-implemented. End-to-end delivery still requires a distributor (for example the
-ntfy app) and is `NO_DATA`.
+implemented. A self-hosted ntfy distributor delivered a generic approval
+notification for a synthetic relay permission event. A provider-driven
+approval notification is still `NO_DATA`.
 
 ## Options
 
@@ -49,6 +50,21 @@ fallback only if delivery reliability outweighs that boundary.
 - The Android app registers through UnifiedPush and posts a generic local
   notification on receipt; it never includes tool detail or message content.
 - Device revocation clears stored push endpoints.
+
+## Self-hosted ntfy
+
+The reference deployment runs ntfy on loopback and exposes it only through the
+private tailnet:
+
+- ntfy listens on `127.0.0.1:2586` with `web-root: disable`.
+- A private proxy maps an HTTPS tailnet port to that loopback port.
+- The Android ntfy app uses that HTTPS URL as its server and acts as the
+  UnifiedPush distributor. The hostname is deployment-specific and is not
+  committed to this repository.
+- Publish/subscribe was verified through the private HTTPS URL.
+
+The server is an external service, not repository content. Delivery to the app
+still requires the distributor to be installed and selected on the phone.
 
 ## Remaining work
 
