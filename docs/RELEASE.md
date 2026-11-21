@@ -1,8 +1,8 @@
 # Release process
 
-Status: `v0.1.2` was published by the workflow and its four assets were
-verified. Build-provenance attestations were added after that release, so the
-first attested tag run is pending. Signed tags remain a local operator action.
+Status: `v0.1.4` was published by the workflow with four verified assets and a
+build-provenance attestation; `v0.1.3` was the first attested release. Signed
+tags remain a local operator action.
 
 ## Checklist
 
