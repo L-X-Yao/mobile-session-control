@@ -53,7 +53,7 @@ Android parity, iOS-specific packaging.
 | CI matrix | Node 22 and 24, CodeQL, Browser E2E | PASS |
 | Release workflow | `v0.1.4` published with four verified assets and a build attestation | PASS |
 | Short soak | 10-minute fake-host run, 6,788 cycles, 0 failures | PASS |
-| Segmented soak | 1-hour run: 37,408 cycles, 0 failures, 0 stalls; two more runs pending | PASS (1/3) |
+| Segmented soak | 3×1h runs: 112,372 cycles, 0 failures, 0 stalls | PASS (3/3) |
 | Fault injection | Crash restart, polling failure, persist failure and corrupt-state tests | PASS |
 | Protocol fuzz | Deterministic malformed traffic, no 5xx | PASS |
 | Performance baseline | 100 turns: p50 25.7 ms, p95 35.3 ms, 148 MB RSS | PASS |
