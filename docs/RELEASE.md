@@ -1,8 +1,8 @@
 # Release process
 
-Status: `v0.1.4` was published by the workflow with four verified assets and a
-build-provenance attestation; `v0.1.3` was the first attested release. Signed
-tags remain a local operator action.
+Status: `v0.1.5` was published by the workflow with source assets, a signed
+APK/AAB upload and a build-provenance attestation. Signed tags remain a local
+operator action.
 
 ## Checklist
 

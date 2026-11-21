@@ -36,6 +36,8 @@ not in this repository and must never be committed.
 - `security-crypto` is on the 1.1.0 alpha line; migrate when the stable
   replacement ships.
 - Release signing and Play Store/TWA packaging; see `docs/ANDROID-SIGNING.md`.
+  A signed `0.1.5` APK/AAB is attached to the GitHub release; it cannot replace
+  a debug-signed install.
 - Real-service HTTPS/Tailscale pairing and one real turn passed on 2026-11-21;
   the app lock and QR scan were not automated. Human hands-on remains
   `NO_DATA`.
