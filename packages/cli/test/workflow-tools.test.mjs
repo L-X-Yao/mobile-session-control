@@ -41,6 +41,17 @@ test('workflow rules mark sensitive source and protocol paths', () => {
     assert.equal(isSensitive('deploy/msc-relay.service.example'), true);
     assert.equal(isSensitive('docs/M1-PROTOCOL.md'), true);
     assert.equal(isSensitive('docs/SERVICE.md'), true);
+    assert.equal(isSensitive('apps/web/app.js'), true);
+    assert.equal(isSensitive('apps/web/sw.js'), true);
+    assert.equal(isSensitive('scripts/scan-patterns.mjs'), true);
+    assert.equal(isSensitive('scripts/workflow-rules.mjs'), true);
+    assert.equal(isSensitive('scripts/precommit.mjs'), true);
+    assert.equal(isSensitive('scripts/verify.mjs'), true);
+    assert.equal(isSensitive('scripts/review-packet.mjs'), true);
+    assert.equal(isSensitive('scripts/install-hooks.mjs'), true);
+    assert.equal(isSensitive('scripts/backup-state.mjs'), true);
+    assert.equal(isSensitive('.github/workflows/ci.yml'), true);
+    assert.equal(isSensitive('apps/web/style.css'), false);
     assert.equal(isSensitive('README.md'), false);
     assert.equal(isSensitive('docs/DEVELOPMENT-WORKFLOW.md'), false);
 });

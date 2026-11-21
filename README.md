@@ -104,7 +104,8 @@ npm run demo:m1
 npm run demo:web
 ```
 
-`precommit` rejects staged private/runtime files and runs the offline suite;
+`precommit` rejects staged private/runtime files, requires the index and working
+tree to match, then runs the offline suite;
 `review:packet` pins a review artifact; `hooks:install` installs the local
 pre-commit hook. Hooks enforce process, not user approval, and `--no-verify`
 bypasses them.

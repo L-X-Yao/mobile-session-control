@@ -26,7 +26,7 @@ tools; do not infer it from a display name.
 | 1. Context | Read `README.md`, `CLAUDE.md`, `docs/OPEN-SOURCE-BOUNDARY.md` and `.local/CONTEXT-HANDOFF.md`; verify identity | Session list, notes |
 | 2. Classify | Separate pure code/docs from gated actions; write an exact manifest for a gated action | Manifest, user approval |
 | 3. Implement | One concern per batch; fake/loopback by default; regression tests with the change | Diff |
-| 4. Verify | `npm test`; `npm run precommit` checks staged paths and blobs, then runs the suite on the working tree | Test counts |
+| 4. Verify | `npm test`; `npm run precommit` requires the index to match the working tree, checks staged paths and blobs, then runs the suite | Test counts |
 | 5. Review | Independent review when triggered; pin the review packet | Review packet |
 | 6. Approve | Explicit user approval for commit, deployment or real action | User message |
 | 7. Close out | Clean tree, update `.local/CONTEXT-HANDOFF.md`, record HEAD | `git status` |
@@ -112,15 +112,17 @@ packet. The reviewer confirms the fix and states whether any high/medium remain.
 
 | Command | Purpose |
 |---|---|
-| `npm test` | Syntax, secret/path scan, CLI tests, phone offline suites |
-| `npm run precommit` | Reject staged private/runtime files, then run `npm test` |
+| `npm test` | Syntax, tracked-path policy, secret/path scan, CLI tests |
+| `npm run precommit` | Reject staged private/runtime files, require a clean working tree, then run `npm test` |
 | `npm run review:packet` | Produce the pinned review packet; `--with-tests` adds counts |
 | `npm run hooks:install` | Install the local `pre-commit` hook |
 
 `precommit` scans the staged blobs for secrets and rejects staged symlinks and
-gitlinks. The test suite itself runs against the working tree, not a separate
-checkout of the index; stage everything you intend to commit and keep the
-working tree aligned with the index.
+gitlinks. It also refuses unstaged tracked changes and untracked non-ignored
+files, because the suite runs against the working tree: stage everything you
+intend to commit first. `npm test` applies the same path policy to the whole
+tracked tree, so CI enforces it for a checkout even when the local hook is
+absent or bypassed.
 
 Hooks are local and can be bypassed with `git commit --no-verify`; they enforce
 process, not intent. User approval remains the only authorization for gated

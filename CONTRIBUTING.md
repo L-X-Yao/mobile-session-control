@@ -12,9 +12,10 @@ suite uses fake providers only. Participation is covered by
 
 ## Before you send a change
 
-1. Run `npm test` (syntax, secret/path scan, CLI tests).
+1. Run `npm test` (syntax, tracked-path policy, secret/path scan, CLI tests).
 2. Install the local hooks once with `npm run hooks:install`; the pre-commit
-   hook runs `npm run precommit`.
+   hook runs `npm run precommit`, which refuses unstaged tracked changes and
+   untracked files before running the suite.
 3. Keep tests offline: loopback fake providers, fresh temporary HOME/config and
    no real credentials, phone, ADB or public listener.
 4. Never commit `.local/`, keys, tokens, pairing files, run directories, raw

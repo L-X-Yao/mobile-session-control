@@ -25,7 +25,7 @@ npm run demo:m1
 MSC_PROVIDER_PROFILE=examples/providers/deepseek.json npm run demo:m1
 ```
 
-`npm test` 执行语法检查、密钥/路径扫描和 CLI 测试。两个 demo 都只启动环回中继、
+`npm test` 执行语法检查、跟踪路径策略、密钥/路径扫描和 CLI 测试。两个 demo 都只启动环回中继、
 会话管理器和 fake provider；最后一条使用 DeepSeek 的 profile 形态。预期输出包含
 `"status":"completed"` 和 `"content":"M1-DEMO-OK"`，不会调用真实 provider，也不消耗配额。
 

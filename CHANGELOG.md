@@ -15,6 +15,14 @@
   service no longer grows it without bound.
 - `npm run backup:state` archives the state directory without `runs/`, and
   `docs/BACKUP.md` documents backup, restore and re-pairing.
+- Review is forced for the web client and service worker, the workflow
+  enforcement scripts and CI workflows, not only server/session/provider paths.
+- `npm test` applies the private-path/symlink/gitlink policy to the whole
+  tracked tree, so CI enforces it when the local hook is bypassed.
+- `precommit` refuses unstaged tracked changes and untracked files, since the
+  suite runs on the working tree.
+- CI validates provider profiles and runs `test:coverage` with an 85% line
+  threshold on Node 24.
 
 ## 0.1.1 — 2026-11-20
 

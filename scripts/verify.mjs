@@ -6,6 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { PATTERNS } from './scan-patterns.mjs';
+import { blockedStagedFile } from './workflow-rules.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKIP_DIRS = new Set([
@@ -63,6 +64,45 @@ function syntax() {
     process.stdout.write(`OK syntax (${files.length} files)\n`);
 }
 
+// Enforce the staged-path policy on the whole tracked tree, so CI checks it
+// too. The local hook sees only a commit's staged set; this sees everything
+// that would land in a checkout.
+function trackedPaths() {
+    const inside = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], {
+        cwd: ROOT, encoding: 'utf8',
+    });
+    if (inside.status !== 0 || inside.stdout.trim() !== 'true') {
+        process.stdout.write('OK tracked paths (skipped: not a git work tree)\n');
+        return;
+    }
+    const listed = spawnSync('git', ['ls-files', '--stage', '-z'], {
+        cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024,
+    });
+    if (listed.status !== 0) {
+        process.stderr.write(`FAIL tracked paths\n${listed.stderr || ''}`);
+        process.exit(listed.status || 1);
+    }
+    const hits = [];
+    let count = 0;
+    for (const entry of listed.stdout.split('\0').filter(Boolean)) {
+        const tab = entry.indexOf('\t');
+        if (tab < 0) continue;
+        const mode = entry.slice(0, tab).split(' ')[0];
+        const file = entry.slice(tab + 1);
+        count += 1;
+        const reason = blockedStagedFile(file, mode);
+        if (reason) hits.push({ file, reason, mode });
+    }
+    if (hits.length > 0) {
+        for (const hit of hits) {
+            process.stderr.write(`BLOCKED ${hit.file} (${hit.reason}, mode ${hit.mode})\n`);
+        }
+        process.stderr.write(`FAIL tracked path policy: ${hits.length} hit(s)\n`);
+        process.exit(1);
+    }
+    process.stdout.write(`OK tracked paths (${count} files)\n`);
+}
+
 function scan() {
     const hits = [];
     let scanned = 0;
@@ -107,6 +147,7 @@ function cliTests() {
 }
 
 syntax();
+trackedPaths();
 scan();
 cliTests();
 process.stdout.write('OK all offline checks\n');

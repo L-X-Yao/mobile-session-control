@@ -24,6 +24,28 @@ const staged = git(['diff', '--cached', '--name-only', '-z', '--diff-filter=ACMR
 if (staged.status !== 0) fail(`git diff failed\n${staged.stderr || ''}`);
 const files = staged.stdout.split('\0').filter(Boolean);
 
+// The suite runs on the working tree. Require the index to match it, so a file
+// cannot be staged, verified and then changed back before the commit records
+// the staged content.
+const unstaged = git(['diff', '--name-only', '-z']);
+if (unstaged.status !== 0) fail(`git diff failed\n${unstaged.stderr || ''}`);
+const unstagedFiles = unstaged.stdout.split('\0').filter(Boolean);
+if (unstagedFiles.length > 0) {
+    for (const file of unstagedFiles.slice(0, 20)) {
+        process.stderr.write(`UNSTAGED ${file}\n`);
+    }
+    fail('unstaged tracked changes; stage everything before committing');
+}
+const untracked = git(['ls-files', '--others', '--exclude-standard', '-z']);
+if (untracked.status !== 0) fail(`git ls-files failed\n${untracked.stderr || ''}`);
+const untrackedFiles = untracked.stdout.split('\0').filter(Boolean);
+if (untrackedFiles.length > 0) {
+    for (const file of untrackedFiles.slice(0, 20)) {
+        process.stderr.write(`UNTRACKED ${file}\n`);
+    }
+    fail('untracked files would be missing from the commit; add or remove them');
+}
+
 const index = git(['ls-files', '--stage', '-z']);
 if (index.status !== 0) fail(`git ls-files failed\n${index.stderr || ''}`);
 const modes = new Map();
