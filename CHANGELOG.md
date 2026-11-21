@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.3 — 2026-11-21
+
 - Device revocation: `POST /v1/device/revoke` and a PWA action invalidate the
   device and session tokens after active sessions are closed; the operator CLI
   rewrites a stopped service's state for a lost phone. See `docs/REVOCATION.md`.
