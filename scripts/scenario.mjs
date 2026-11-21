@@ -167,9 +167,14 @@ async function main() {
             await request(`${base}/messages`, {
                 token: clientToken, method: 'POST', body: { content: 'hello' },
             });
+            // Wait for both events in one snapshot: the fake host appends the
+            // assistant message and turn-end separately, and a slower runner
+            // can observe only the first.
             const list = await waitEvents(sessionId, clientToken,
                 (events) => events.some((event) => event.content === 'FAKE-OK:hello'
-                    && event.type === 'assistant-message'), 'hello');
+                    && event.type === 'assistant-message')
+                    && events.some((event) => event.type === 'turn-end'
+                        && event.status === 'completed'), 'hello');
             if (!list.some((event) => event.type === 'turn-end' && event.status === 'completed')) {
                 throw new Error('hello turn did not complete');
             }
@@ -188,7 +193,9 @@ async function main() {
                 body: { type: 'permission-decision', requestId: permission.requestId, decision: 'allow' },
             });
             const after = await waitEvents(sessionId, clientToken,
-                (events) => events.some((event) => event.content === 'FAKE-ALLOW'), 'allow');
+                (events) => events.some((event) => event.content === 'FAKE-ALLOW')
+                    && events.some((event) => event.type === 'turn-end'
+                        && event.status === 'completed'), 'allow');
             if (!after.some((event) => event.type === 'turn-end' && event.status === 'completed')) {
                 throw new Error('allow turn did not complete');
             }

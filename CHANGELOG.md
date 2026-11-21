@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- The scenario suite waits for `turn-end` in the same snapshot as the
+  assistant message, removing a Node 22 CI race.
+
 ## 0.1.2 — 2026-11-21
 
 - A failed debounced snapshot write is captured instead of crashing; the next
