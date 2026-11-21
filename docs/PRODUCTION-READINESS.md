@@ -45,6 +45,9 @@ Android parity, iOS-specific packaging.
 | CI matrix | Node 22 and 24, CodeQL, Browser E2E | PASS |
 | Release workflow | `v0.1.4` published with four verified assets and a build attestation | PASS |
 | Short soak | 10-minute fake-host run, 6,788 cycles, 0 failures | PASS |
+| Fault injection | Crash restart, polling failure, persist failure and corrupt-state tests | PASS |
+| Protocol fuzz | Deterministic malformed traffic, no 5xx | PASS |
+| Performance baseline | 100 turns: p50 25.7 ms, p95 35.3 ms, 148 MB RSS | PASS |
 | Scorecard | First run on `48efafa` succeeded | PASS |
 | Build attestation | `v0.1.4` tarball digest has a published build-provenance bundle | PASS |
 | `OnFailure` alert | Unit template added; not exercised on a failed service | `NO_DATA` |

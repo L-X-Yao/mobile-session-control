@@ -116,6 +116,7 @@ packet. The reviewer confirms the fix and states whether any high/medium remain.
 | `npm test` | Syntax, tracked-path policy, secret/path scan, CLI tests |
 | `npm run precommit` | Reject staged private/runtime files, require a clean working tree, then run `npm test` |
 | `npm run scenario` | Offline fake-host end-to-end slice with a JSON report |
+| `npm run bench` | Offline latency/RSS benchmark against the fake host |
 | `npm run e2e:web` | Optional real-Chromium mobile scenario; skips without Playwright |
 | `npm run release:artifacts` | Build the archive, checksums, manifest and SBOM for a tag |
 | `npm run revoke:device` | Rewrite a stopped service's state and invalidate the paired device |

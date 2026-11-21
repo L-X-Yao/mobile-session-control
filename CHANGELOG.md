@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- New `npm run bench` records offline turn, event-read and session-list latency
+  percentiles plus RSS against the fake host.
+- New deterministic protocol fuzz test sends malformed methods, paths, auth and
+  bodies and requires structured 4xx responses, never 5xx.
+- Segmented reliability evidence replaces the continuous-24h claim while the
+  host cannot stay awake overnight.
+
 ## 0.1.4 — 2026-11-21
 
 - The launcher guard polls for daemonized descendants for up to one second

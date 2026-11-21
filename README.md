@@ -102,6 +102,7 @@ npm run hooks:install
 npm run revoke:device -- --state-file <absolute>
 npm run restore:drill -- --backup <absolute.tgz>
 npm run scenario
+npm run bench
 npm run e2e:web
 npm run test:soak
 npm run demo:m1
