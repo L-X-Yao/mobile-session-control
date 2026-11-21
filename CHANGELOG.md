@@ -13,6 +13,7 @@
   encrypted snapshots, without touching the live service.
 - OpenSSF Scorecard runs on `main` and on a schedule; the release workflow
   attests build provenance for release artifacts.
+- CodeQL actions moved to v4 ahead of the v3 deprecation.
 - `docs/PRODUCTION-READINESS.md` records the supported scope, controls,
   evidence matrix and known `NO_DATA` items.
 - The pairing file is retained after pairing as the operator recovery channel.

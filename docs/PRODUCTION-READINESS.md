@@ -44,7 +44,8 @@ Android parity, iOS-specific packaging.
 | CI matrix | Node 22 and 24, CodeQL, Browser E2E | PASS |
 | Release workflow | `v0.1.2` published with four verified assets | PASS |
 | Short soak | 10-minute fake-host run, 6,788 cycles, 0 failures | PASS |
-| Scorecard / build attestation | Workflows added; not yet run on GitHub | `NO_DATA` |
+| Scorecard | First run on `48efafa` succeeded | PASS |
+| Build attestation | Workflow added; the next tagged release will produce it | `NO_DATA` |
 | `OnFailure` alert | Unit template added; not exercised on a failed service | `NO_DATA` |
 | Continuous 24-hour | Not run to completion with instrumented evidence | `NO_DATA` |
 | Human hands-on phone | Previous runs were ADB automation | `NO_DATA` |
