@@ -6,9 +6,11 @@
   uses the same endpoint and model as the shell that starts the relay.
 - Native provider labels are truncated to the relay's 64-character catalog
   limit; long session titles no longer prevent native mode from starting.
-- Native resume against DeepSeek is `NO_GO`: the provider rejects the replayed
+- Native resume against DeepSeek is `NO_GO`: the provider rejected the replayed
   `tool_definition` block with HTTP 422. Listing, pairing, session creation and
-  same-session resume reached the provider.
+  same-session resume reached the provider. An offline replay shows
+  `CLAUDE_CODE_INLINE_TOOLS=0` changes the block to `tool_reference`; native
+  mode now sets that default. A real rerun is pending.
 
 ## 0.1.5 — 2026-11-21
 

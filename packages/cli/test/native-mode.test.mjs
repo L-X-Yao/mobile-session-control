@@ -47,6 +47,7 @@ test('native mode lists a session, resumes it and completes a fake turn', async 
             HOME: process.env.HOME,
             PATH: process.env.PATH || '/usr/bin:/bin',
             ANTHROPIC_TEST_MARKER: 'native-env-ok',
+            CLAUDE_CODE_INLINE_TOOLS: '',
             CLAUDE_AGENT_SDK_PATH: FAKE_SDK,
             CLAUDE_CODE_PATH: agents,
             MSC_PORT: '0',
@@ -121,7 +122,7 @@ test('native mode lists a session, resumes it and completes a fake turn', async 
             { token: clientToken },
         );
         return events.body?.events?.some(
-            (event) => event.content === 'FAKE-SDK-ENV:native-env-ok',
+            (event) => event.content === 'FAKE-SDK-ENV:native-env-ok:0',
         );
     });
 

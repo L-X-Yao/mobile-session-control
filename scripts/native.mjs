@@ -166,6 +166,10 @@ try {
                     HOME: process.env.HOME,
                     PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin',
                     ...inheritedProviderEnv(process.env),
+                    // The SDK's streaming resume inlines tool definitions as
+                    // `tool_definition` blocks; DeepSeek rejected that variant
+                    // and named `tool_reference` as the expected one.
+                    CLAUDE_CODE_INLINE_TOOLS: process.env.CLAUDE_CODE_INLINE_TOOLS || '0',
                     CLAUDE_AGENT_SDK_PATH: sdkPath,
                     ...(process.env.CLAUDE_CODE_PATH
                         ? { CLAUDE_CODE_PATH: process.env.CLAUDE_CODE_PATH } : {}),
