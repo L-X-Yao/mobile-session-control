@@ -12,6 +12,10 @@ keytool -genkeypair -v \
   -alias msc -keyalg RSA -keysize 4096 -validity 10000
 ```
 
+The command prompts for the password. Do not pass it in argv; for automation
+use `-storepass:env MSC_KEYSTORE_PASSWORD` or `-storepass:file <path>` (and the
+same for `-keypass`).
+
 Keep the keystore and passwords backed up. Losing them prevents updating an
 already installed app.
 

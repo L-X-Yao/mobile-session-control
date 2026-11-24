@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `v0.1.6` shipped with a temporary `scorecard-action` v2.5.0 pin because the
+  v2.6.0 GHCR image referenced a missing platform manifest. Revert to v2.6.0
+  or newer once the upstream image is repaired.
+
 ## 0.1.6 — 2026-11-24
 
 - Native mode inherits `ANTHROPIC_*` and proxy variables, so a resumed session
