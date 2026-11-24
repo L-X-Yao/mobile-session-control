@@ -49,6 +49,7 @@ Android parity, iOS-specific packaging.
 | Real-phone revocation | 2026-11-21, ADB: revoke, new pairing code, re-pair; no provider call | PASS |
 | Native session resume (DeepSeek) | Real listing, pairing, session creation and same-session resume completed after `CLAUDE_CODE_INLINE_TOOLS=0`; assistant returned `NATIVE-RESUME-OK` | PASS |
 | Native fork of a live session | Active background source forked: new session ID, `NATIVE-FORK-OK`, source transcript unchanged during the turn | PASS |
+| Native session phone control | 2026-11-24 Android debug build over adb reverse: pair, select native provider, one real turn returned `NATIVE-PHONE-OK`; ADB-driven, not human hands-on | PASS |
 | Backup recovery | Plaintext and encrypted restore drills | PASS |
 | Metrics | Relay metrics endpoint test | PASS |
 | CI matrix | Node 22 and 24, CodeQL, Browser E2E | PASS |

@@ -64,8 +64,10 @@ rerun on the same day resumed the seed session, completed the turn and returned
 `NATIVE-RESUME-OK`; the recorded request no longer included the `inline-tools`
 beta. A real fork of that session, held active by a background agent, completed
 with `NATIVE-FORK-OK`, created a new session ID and left the source transcript
-unchanged during the turn. Phone control over a native session remains
-`NO_DATA`.
+unchanged during the turn. The Android client, in a debug side-by-side build,
+paired over adb reverse, selected the native provider and completed one real
+turn (`NATIVE-PHONE-OK`). That run was ADB-driven, so human hands-on phone
+control remains `NO_DATA`.
 
 ## Boundaries
 

@@ -14,6 +14,10 @@
   source transcript. Phone control over a native session remains `NO_DATA`.
 - Native provider labels reserve the `[active→fork]` marker when a long title
   is truncated.
+- Native sessions can be controlled from the Android client: a side-by-side
+  debug build paired over adb reverse, selected a native provider and completed
+  a real turn (`NATIVE-PHONE-OK`). ADB-driven; human hands-on remains
+  `NO_DATA`.
 
 ## 0.1.5 — 2026-11-21
 
