@@ -23,6 +23,24 @@ const CHILD = path.join(ROOT, 'packages/cli/src/session/claude-host-child.mjs');
 const WEB_DIR = path.join(ROOT, 'apps/web');
 const PROVIDER_TRANSPORT = 'anthropic-compatible-sse';
 
+// Native mode must reach the same provider endpoint and model as the shell
+// that starts it. Inherit only provider and proxy variables; launcher/session
+// variables such as CLAUDE_CODE_SESSION_ID stay out of the child.
+const INHERITED_ENV_NAMES = new Set([
+    'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY',
+    'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy',
+]);
+function inheritedProviderEnv(parent) {
+    const result = {};
+    for (const [name, value] of Object.entries(parent)) {
+        if (typeof value !== 'string') continue;
+        if (name.startsWith('ANTHROPIC_') || INHERITED_ENV_NAMES.has(name)) {
+            result[name] = value;
+        }
+    }
+    return result;
+}
+
 function fail(message) {
     process.stderr.write(`FAIL native: ${message}\n`);
     process.exit(1);
@@ -102,9 +120,10 @@ const providers = sessions.map((session, index) => {
     });
     return {
         id,
+        // The relay catalog accepts at most 64 characters in a label.
         label: `${title} · ${path.basename(session.cwd || '')}${live ? ' [active→fork]' : ''}`
             .replace(/[\u0000-\u001f\u007f]/g, ' ')
-            .slice(0, 120),
+            .slice(0, 64),
         model: 'native',
         effort: 'low',
         transport: PROVIDER_TRANSPORT,
@@ -146,6 +165,7 @@ try {
                 env: {
                     HOME: process.env.HOME,
                     PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin',
+                    ...inheritedProviderEnv(process.env),
                     CLAUDE_AGENT_SDK_PATH: sdkPath,
                     ...(process.env.CLAUDE_CODE_PATH
                         ? { CLAUDE_CODE_PATH: process.env.CLAUDE_CODE_PATH } : {}),

@@ -14,8 +14,8 @@ function promptText(message) {
 export async function listSessions() {
     return [{
         sessionId: '11111111-2222-4333-8444-555555555555',
-        summary: 'Fake native session',
-        customTitle: 'Fake native session',
+        summary: 'Fake native session with a deliberately long title that exceeds the relay label limit',
+        customTitle: 'Fake native session with a deliberately long title that exceeds the relay label limit',
         firstPrompt: 'fake native',
         cwd: process.cwd(),
         lastModified: Date.now(),
@@ -62,6 +62,14 @@ export function query({ prompt, options = {} }) {
                     { signal: new AbortController().signal, suggestions: [] },
                 );
                 const text = `FAKE-SDK-MCP:${result.behavior}`;
+                yield { type: 'assistant', message: { content: [{ type: 'text', text }] } };
+                yield {
+                    type: 'result', subtype: 'success', is_error: false, result: text,
+                };
+                continue;
+            }
+            if (content.includes('nativeenv')) {
+                const text = `FAKE-SDK-ENV:${process.env.ANTHROPIC_TEST_MARKER || ''}`;
                 yield { type: 'assistant', message: { content: [{ type: 'text', text }] } };
                 yield {
                     type: 'result', subtype: 'success', is_error: false, result: text,

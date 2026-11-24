@@ -42,12 +42,12 @@ Android parity, iOS-specific packaging.
 | Android real service | 2026-11-21 HTTPS/Tailscale: pair, DeepSeek provider, one real completed turn | PASS |
 | Android app lock / QR | Biometric prompt appears on launch; unlock and QR scan not automated | `NO_DATA` |
 | Android real Bash approval | The prompt returned text without a Bash tool call; no permission event | `NO_DATA` |
-| Android CI | Workflow added; first run pending | `NO_DATA` |
+| Android CI | Workflow green on the `v0.1.5` commit | PASS |
 | Android push | Self-hosted ntfy delivered a generic approval notification for a synthetic permission event | PASS (synthetic) |
 | Provider-driven push | No real provider approval notification was triggered | `NO_DATA` |
 | Device revocation | Relay/service/web tests, operator CLI encrypted-state test | PASS |
 | Real-phone revocation | 2026-11-21, ADB: revoke, new pairing code, re-pair; no provider call | PASS |
-| Native session takeover | Fake-SDK listing/resume/fork integration; real session resume not run | `NO_DATA` |
+| Native session takeover | Real listing, provider exposure and same-session resume reached the DeepSeek endpoint; the replayed turn was rejected with HTTP 422 on a `tool_definition` block | `NO_GO` |
 | Backup recovery | Plaintext and encrypted restore drills | PASS |
 | Metrics | Relay metrics endpoint test | PASS |
 | CI matrix | Node 22 and 24, CodeQL, Browser E2E | PASS |

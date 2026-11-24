@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Native mode inherits `ANTHROPIC_*` and proxy variables, so a resumed session
+  uses the same endpoint and model as the shell that starts the relay.
+- Native provider labels are truncated to the relay's 64-character catalog
+  limit; long session titles no longer prevent native mode from starting.
+- Native resume against DeepSeek is `NO_GO`: the provider rejects the replayed
+  `tool_definition` block with HTTP 422. Listing, pairing, session creation and
+  same-session resume reached the provider.
+
 ## 0.1.5 — 2026-11-21
 
 - New Android MVP client (Kotlin/Compose): pairing/QR, session list, chat,

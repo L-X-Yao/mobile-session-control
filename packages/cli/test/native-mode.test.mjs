@@ -46,6 +46,7 @@ test('native mode lists a session, resumes it and completes a fake turn', async 
         env: {
             HOME: process.env.HOME,
             PATH: process.env.PATH || '/usr/bin:/bin',
+            ANTHROPIC_TEST_MARKER: 'native-env-ok',
             CLAUDE_AGENT_SDK_PATH: FAKE_SDK,
             CLAUDE_CODE_PATH: agents,
             MSC_PORT: '0',
@@ -78,6 +79,9 @@ test('native mode lists a session, resumes it and completes a fake turn', async 
     assert.equal(providers.status, 200);
     assert.equal(providers.body.providers.length, 1);
     assert.equal(providers.body.providers[0].id, 'native-1');
+    // A long session title must be truncated to the relay's 64-char limit.
+    assert.ok(providers.body.providers[0].label.length <= 64);
+    assert.ok(providers.body.providers[0].label.startsWith('Fake native session'));
 
     const created = await request(`${base}/v1/sessions`, {
         token: paired.body.token,
@@ -101,7 +105,24 @@ test('native mode lists a session, resumes it and completes a fake turn', async 
             `${base}/v1/sessions/${sessionId}/events?after=0`,
             { token: clientToken },
         );
-        return events.body?.events?.some((event) => event.content === 'FAKE-SDK-OK:hello');
+        const list = events.body?.events || [];
+        return list.some((event) => event.content === 'FAKE-SDK-OK:hello')
+            && list.some((event) => event.type === 'turn-end');
+    });
+
+    // The child must inherit the operator's provider environment; otherwise a
+    // resumed session falls back to a different endpoint or model.
+    await request(`${base}/v1/sessions/${sessionId}/messages`, {
+        token: clientToken, method: 'POST', body: { content: 'nativeenv' },
+    });
+    await waitFor(async () => {
+        const events = await request(
+            `${base}/v1/sessions/${sessionId}/events?after=0`,
+            { token: clientToken },
+        );
+        return events.body?.events?.some(
+            (event) => event.content === 'FAKE-SDK-ENV:native-env-ok',
+        );
     });
 
     child.kill('SIGTERM');

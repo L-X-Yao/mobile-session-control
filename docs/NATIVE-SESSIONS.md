@@ -43,6 +43,22 @@ remains loopback-only; `MSC_PUBLIC_URL` is for the phone-visible URL printed by
 the script, not a relay bind change. If `claude agents --json` fails, native
 mode refuses to start rather than risk resuming a live session in place.
 
+Native mode inherits `ANTHROPIC_*` and proxy variables from the shell that
+starts it, so the resumed session uses the same endpoint and model as that
+shell. Those values are visible to tool calls, as in a normal terminal. One
+relay has one provider environment: sessions created under a different provider
+are listed, but resume against the relay's endpoint.
+
+## Verification status
+
+2026-11-24: real listing, provider exposure, pairing, session creation and
+same-session resume were exercised against Claude Code 2.1.331 and Agent SDK
+0.3.319 on DeepSeek. The relay resumed the seed session in place and reached the
+provider, which rejected the replayed transcript with HTTP 422
+(`tool_definition` vs `tool_reference`). Resumed-turn completion is `NO_GO`
+until that inline-tools incompatibility is resolved. A fork turn and phone
+control over a native session remain `NO_DATA`.
+
 ## Boundaries
 
 - Native mode loads the real user settings and transcripts. It is intentionally
@@ -52,5 +68,5 @@ mode refuses to start rather than risk resuming a live session in place.
   sessions are forked, not hot-attached.
 - The phone does not preload the full native transcript; it starts a new relay
   view and the SDK resumes the conversation. History preload is a later step.
-- Real resume and phone control have not yet been exercised in this repository;
-  that remains `NO_DATA`.
+- Fork of a live session and phone control over a native session have not been
+  exercised; both remain `NO_DATA`.
