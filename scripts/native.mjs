@@ -118,12 +118,15 @@ const providers = sessions.map((session, index) => {
         cwd: session.cwd,
         active: Boolean(live),
     });
+    // The relay catalog accepts at most 64 characters in a label. Reserve the
+    // fork marker so truncation cannot hide it.
+    const suffix = live ? ' [active→fork]' : '';
+    const prefix = `${title} · ${path.basename(session.cwd || '')}`
+        .replace(/[\u0000-\u001f\u007f]/g, ' ')
+        .slice(0, 64 - suffix.length);
     return {
         id,
-        // The relay catalog accepts at most 64 characters in a label.
-        label: `${title} · ${path.basename(session.cwd || '')}${live ? ' [active→fork]' : ''}`
-            .replace(/[\u0000-\u001f\u007f]/g, ' ')
-            .slice(0, 64),
+        label: `${prefix}${suffix}`,
         model: 'native',
         effort: 'low',
         transport: PROVIDER_TRANSPORT,

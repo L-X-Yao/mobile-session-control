@@ -9,8 +9,11 @@
 - Native same-session resume on DeepSeek now completes. The SDK streaming
   resume sent a `tool_definition` block, which DeepSeek rejects; native mode
   defaults `CLAUDE_CODE_INLINE_TOOLS=0` so the request carries `tool_reference`.
-  A real rerun returned `NATIVE-RESUME-OK`; fork and phone control remain
-  `NO_DATA`.
+  A real rerun returned `NATIVE-RESUME-OK`, and a real fork of an active test
+  session returned `NATIVE-FORK-OK` with a new session ID and an unchanged
+  source transcript. Phone control over a native session remains `NO_DATA`.
+- Native provider labels reserve the `[active→fork]` marker when a long title
+  is truncated.
 
 ## 0.1.5 — 2026-11-21
 

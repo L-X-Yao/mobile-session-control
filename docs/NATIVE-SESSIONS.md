@@ -32,7 +32,7 @@ session through the Agent SDK.
 | Session state | Behavior |
 |---|---|
 | Stopped/historical | Resumes the same session ID and persists new turns to `~/.claude/projects` |
-| Active interactive/background | Forks a copy with a new session ID; the original is untouched |
+| Active interactive/background | Forks a copy with a new session ID; the original is untouched; the provider label keeps `[active→fork]` |
 | No SDK path | Refuses to start |
 | Port 8787 busy | Stop `msc-relay` first or use another port plus a private proxy |
 
@@ -62,7 +62,9 @@ SDK streaming-resume path injects a `tool_addition` block whose nested tool is
 and drops the `inline-tools` beta. Native mode sets that variable by default. A
 rerun on the same day resumed the seed session, completed the turn and returned
 `NATIVE-RESUME-OK`; the recorded request no longer included the `inline-tools`
-beta. Fork of a live session and phone control over a native session remain
+beta. A real fork of that session, held active by a background agent, completed
+with `NATIVE-FORK-OK`, created a new session ID and left the source transcript
+unchanged during the turn. Phone control over a native session remains
 `NO_DATA`.
 
 ## Boundaries

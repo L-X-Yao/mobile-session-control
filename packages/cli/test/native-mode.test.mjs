@@ -37,10 +37,15 @@ async function request(url, { token = null, method = 'GET', body = undefined } =
     return { status: response.status, body: data };
 }
 
-test('native mode lists a session, resumes it and completes a fake turn', async (t) => {
+test('native mode lists an active session, forks it and completes a fake turn', async (t) => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'msc-native-test-'));
     const agents = path.join(dir, 'agents.sh');
-    fs.writeFileSync(agents, '#!/bin/sh\necho "[]"\n', { mode: 0o700 });
+    fs.writeFileSync(
+        agents,
+        '#!/bin/sh\n'
+        + 'echo \'[{"sessionId":"11111111-2222-4333-8444-555555555555","kind":"background","state":"idle"}]\'\n',
+        { mode: 0o700 },
+    );
     const child = spawn(process.execPath, [NATIVE], {
         cwd: ROOT,
         env: {
@@ -80,9 +85,11 @@ test('native mode lists a session, resumes it and completes a fake turn', async 
     assert.equal(providers.status, 200);
     assert.equal(providers.body.providers.length, 1);
     assert.equal(providers.body.providers[0].id, 'native-1');
-    // A long session title must be truncated to the relay's 64-char limit.
+    // A long session title must be truncated to the relay's 64-char limit, and
+    // the active marker must survive the truncation.
     assert.ok(providers.body.providers[0].label.length <= 64);
     assert.ok(providers.body.providers[0].label.startsWith('Fake native session'));
+    assert.ok(providers.body.providers[0].label.endsWith(' [active→fork]'));
 
     const created = await request(`${base}/v1/sessions`, {
         token: paired.body.token,
@@ -121,9 +128,22 @@ test('native mode lists a session, resumes it and completes a fake turn', async 
             `${base}/v1/sessions/${sessionId}/events?after=0`,
             { token: clientToken },
         );
-        return events.body?.events?.some(
-            (event) => event.content === 'FAKE-SDK-ENV:native-env-ok:0',
+        const list = events.body?.events || [];
+        return list.some((event) => event.content === 'FAKE-SDK-ENV:native-env-ok:0')
+            && list.some((event) => event.type === 'turn-end');
+    });
+
+    // An active source must set forkSession on the resumed host.
+    await request(`${base}/v1/sessions/${sessionId}/messages`, {
+        token: clientToken, method: 'POST', body: { content: 'nativeinfo' },
+    });
+    await waitFor(async () => {
+        const events = await request(
+            `${base}/v1/sessions/${sessionId}/events?after=0`,
+            { token: clientToken },
         );
+        return events.body?.events?.some((event) => event.content
+            === 'FAKE-SDK-NATIVE:11111111-2222-4333-8444-555555555555:persist:default-sources:fork');
     });
 
     child.kill('SIGTERM');

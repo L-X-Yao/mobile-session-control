@@ -48,7 +48,7 @@ Android parity, iOS-specific packaging.
 | Device revocation | Relay/service/web tests, operator CLI encrypted-state test | PASS |
 | Real-phone revocation | 2026-11-21, ADB: revoke, new pairing code, re-pair; no provider call | PASS |
 | Native session resume (DeepSeek) | Real listing, pairing, session creation and same-session resume completed after `CLAUDE_CODE_INLINE_TOOLS=0`; assistant returned `NATIVE-RESUME-OK` | PASS |
-| Native fork of a live session | Not run | `NO_DATA` |
+| Native fork of a live session | Active background source forked: new session ID, `NATIVE-FORK-OK`, source transcript unchanged during the turn | PASS |
 | Backup recovery | Plaintext and encrypted restore drills | PASS |
 | Metrics | Relay metrics endpoint test | PASS |
 | CI matrix | Node 22 and 24, CodeQL, Browser E2E | PASS |
