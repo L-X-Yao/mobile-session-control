@@ -78,5 +78,6 @@ control remains `NO_DATA`.
   sessions are forked, not hot-attached.
 - The phone does not preload the full native transcript; it starts a new relay
   view and the SDK resumes the conversation. History preload is a later step.
-- Fork of a live session and phone control over a native session have not been
-  exercised; both remain `NO_DATA`.
+- Human hands-on phone control and real Kimi/GLM native sessions remain
+  `NO_DATA`; the DeepSeek resume, fork and ADB-driven Android path are covered
+  in the verification section.
