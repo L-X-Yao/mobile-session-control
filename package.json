@@ -24,6 +24,7 @@
   "scripts": {
     "test": "node scripts/verify.mjs",
     "verify": "node scripts/verify.mjs",
+    "verify:evidence": "node scripts/check-evidence.mjs",
     "precommit": "node scripts/precommit.mjs",
     "review:packet": "node scripts/review-packet.mjs",
     "hooks:install": "node scripts/install-hooks.mjs",
