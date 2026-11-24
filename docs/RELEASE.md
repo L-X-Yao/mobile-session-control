@@ -1,6 +1,6 @@
 # Release process
 
-Status: `v0.1.5` was published by the workflow with source assets, a signed
+Status: `v0.1.6` was published by the workflow with source assets, a signed
 APK/AAB upload and a build-provenance attestation. Signed tags remain a local
 operator action.
 

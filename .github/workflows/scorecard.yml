@@ -22,7 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      # Pinned to the v7/v2.6.0/v4 commits; Dependabot still proposes updates.
+      # Pinned to the v7/v2.5.0/v4 commits; Dependabot still proposes updates.
+      # v2.6.0 is blocked by a missing GHCR platform manifest; revert when fixed.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false

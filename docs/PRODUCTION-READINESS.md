@@ -42,7 +42,7 @@ Android parity, iOS-specific packaging.
 | Android real service | 2026-11-21 HTTPS/Tailscale: pair, DeepSeek provider, one real completed turn | PASS |
 | Android app lock / QR | Biometric prompt appears on launch; unlock and QR scan not automated | `NO_DATA` |
 | Android real Bash approval | The prompt returned text without a Bash tool call; no permission event | `NO_DATA` |
-| Android CI | Workflow green on the `v0.1.5` commit | PASS |
+| Android CI | Workflow green on the `v0.1.6` commit | PASS |
 | Android push | Self-hosted ntfy delivered a generic approval notification for a synthetic permission event | PASS (synthetic) |
 | Provider-driven push | No real provider approval notification was triggered | `NO_DATA` |
 | Device revocation | Relay/service/web tests, operator CLI encrypted-state test | PASS |
@@ -53,14 +53,14 @@ Android parity, iOS-specific packaging.
 | Backup recovery | Plaintext and encrypted restore drills | PASS |
 | Metrics | Relay metrics endpoint test | PASS |
 | CI matrix | Node 22 and 24, CodeQL, Browser E2E | PASS |
-| Release workflow | `v0.1.5` published with source assets, signed APK/AAB and a build attestation | PASS |
+| Release workflow | `v0.1.6` published with source assets, signed APK/AAB and a build attestation | PASS |
 | Short soak | 10-minute fake-host run, 6,788 cycles, 0 failures | PASS |
 | Segmented soak | 3×1h runs: 112,372 cycles, 0 failures, 0 stalls | PASS (3/3) |
 | Fault injection | Crash restart, polling failure, persist failure and corrupt-state tests | PASS |
 | Protocol fuzz | Deterministic malformed traffic, no 5xx | PASS |
 | Performance baseline | 100 turns: p50 25.7 ms, p95 35.3 ms, 148 MB RSS | PASS |
 | Scorecard | First run on `48efafa` succeeded | PASS |
-| Build attestation | `v0.1.5` tarball digest has a published build-provenance bundle | PASS |
+| Build attestation | `v0.1.6` tarball digest `fd8852ba...` has a published build-provenance bundle | PASS |
 | `OnFailure` alert | Unit template added; not exercised on a failed service | `NO_DATA` |
 | Continuous 24-hour | Not run to completion with instrumented evidence | `NO_DATA` |
 | Human hands-on phone | All phone runs so far are ADB automation | `NO_DATA` |
