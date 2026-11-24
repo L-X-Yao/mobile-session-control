@@ -53,16 +53,17 @@ are listed, but resume against the relay's endpoint.
 
 2026-11-24: real listing, provider exposure, pairing, session creation and
 same-session resume were exercised against Claude Code 2.1.331 and Agent SDK
-0.3.319 on DeepSeek. The relay resumed the seed session in place and reached the
-provider, which rejected the replayed transcript with HTTP 422
-(`tool_definition` vs `tool_reference`).
+0.3.319 on DeepSeek. The first resume reached the provider and was rejected with
+HTTP 422 (`tool_definition` vs `tool_reference`).
 
-An offline replay against a local recording endpoint reproduced the request. The
+An offline replay against a local recording endpoint reproduced the request: the
 SDK streaming-resume path injects a `tool_addition` block whose nested tool is
 `tool_definition`; `CLAUDE_CODE_INLINE_TOOLS=0` changes it to `tool_reference`
 and drops the `inline-tools` beta. Native mode sets that variable by default. A
-real DeepSeek rerun is pending; until it passes, resumed-turn completion is
-`NO_GO`. A fork turn and phone control over a native session remain `NO_DATA`.
+rerun on the same day resumed the seed session, completed the turn and returned
+`NATIVE-RESUME-OK`; the recorded request no longer included the `inline-tools`
+beta. Fork of a live session and phone control over a native session remain
+`NO_DATA`.
 
 ## Boundaries
 

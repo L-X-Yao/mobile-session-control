@@ -47,7 +47,8 @@ Android parity, iOS-specific packaging.
 | Provider-driven push | No real provider approval notification was triggered | `NO_DATA` |
 | Device revocation | Relay/service/web tests, operator CLI encrypted-state test | PASS |
 | Real-phone revocation | 2026-11-21, ADB: revoke, new pairing code, re-pair; no provider call | PASS |
-| Native session takeover | Real resume reached DeepSeek and hit HTTP 422 on `tool_definition`; an offline replay shows `CLAUDE_CODE_INLINE_TOOLS=0` switches the block to `tool_reference`; real rerun pending | `NO_GO` |
+| Native session resume (DeepSeek) | Real listing, pairing, session creation and same-session resume completed after `CLAUDE_CODE_INLINE_TOOLS=0`; assistant returned `NATIVE-RESUME-OK` | PASS |
+| Native fork of a live session | Not run | `NO_DATA` |
 | Backup recovery | Plaintext and encrypted restore drills | PASS |
 | Metrics | Relay metrics endpoint test | PASS |
 | CI matrix | Node 22 and 24, CodeQL, Browser E2E | PASS |

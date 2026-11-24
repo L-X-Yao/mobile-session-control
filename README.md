@@ -54,7 +54,7 @@ quota.
 | Relay, session manager, host and Claude adapter | Implemented; tested offline against fake providers |
 | Mobile web client / PWA | Pairing, session list, chat, approvals, Stop, reconnect, installable shell |
 | Native Android client | MVP; signed release APK/AAB at `v0.1.5`; pairing/QR, sessions, chat, approvals, Stop, questions, biometric lock |
-| Native Claude Code session takeover | Experimental; real listing and resume reached the provider, completion is blocked on a DeepSeek tool-block incompatibility; see `docs/NATIVE-SESSIONS.md` |
+| Native Claude Code session takeover | Experimental; real same-session resume completed on DeepSeek; fork and phone control not yet verified; see `docs/NATIVE-SESSIONS.md` |
 | Real-phone and real-provider evidence | Recorded outside the repository |
 | Continuous 24-hour reliability | `NO_DATA` |
 | Push / packaging | UnifiedPush via self-hosted ntfy; Play Store/TWA not implemented |
