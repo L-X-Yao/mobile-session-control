@@ -8,7 +8,24 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const LOCAL = path.join(ROOT, '.local');
+
+function argValue(name) {
+    const index = process.argv.indexOf(name);
+    return index >= 0 ? process.argv[index + 1] : undefined;
+}
+
+function argValues(name) {
+    const values = [];
+    for (let index = 0; index < process.argv.length; index += 1) {
+        if (process.argv[index] === name && typeof process.argv[index + 1] === 'string') {
+            values.push(process.argv[index += 1]);
+        }
+    }
+    return values;
+}
+
+const LOCAL = path.resolve(argValue('--local') || path.join(ROOT, '.local'));
+const REQUIRED = argValues('--require');
 
 function fail(message) {
     process.stderr.write(`FAIL evidence: ${message}\n`);
@@ -18,6 +35,16 @@ function fail(message) {
 if (!fs.existsSync(LOCAL)) {
     process.stdout.write('SKIP evidence (no .local)\n');
     process.exit(0);
+}
+
+for (const name of REQUIRED) {
+    const dir = path.resolve(LOCAL, name);
+    if (dir !== LOCAL && !dir.startsWith(`${LOCAL}${path.sep}`)) {
+        fail(`required pack escapes .local: ${name}`);
+    }
+    if (!fs.existsSync(path.join(dir, 'MANIFEST.md'))) {
+        fail(`missing required pack: ${name}`);
+    }
 }
 
 function manifests(dir, depth = 0) {
@@ -34,6 +61,10 @@ function manifests(dir, depth = 0) {
 }
 
 const packs = manifests(LOCAL);
+if (packs.length === 0 && REQUIRED.length === 0) {
+    process.stdout.write('SKIP evidence (no packs)\n');
+    process.exit(0);
+}
 let filesChecked = 0;
 for (const dir of packs) {
     const manifestPath = path.join(dir, 'MANIFEST.md');
