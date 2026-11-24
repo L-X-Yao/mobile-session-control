@@ -104,8 +104,10 @@ class MscViewModel(application: Application) : AndroidViewModel(application) {
                     it.copy(
                         busy = false,
                         providers = providers,
-                        selectedProviderId = it.selectedProviderId
-                            ?: providers.firstOrNull { provider -> provider.enabled }?.id,
+                        selectedProviderId = retainedProviderId(
+                            it.selectedProviderId,
+                            providers,
+                        ),
                         sessions = sessions,
                         status = "已配对 · ${sessions.size} 个会话",
                     )
@@ -121,10 +123,15 @@ class MscViewModel(application: Application) : AndroidViewModel(application) {
     fun createSession() {
         val token = store.deviceToken ?: return
         val base = store.baseUrl ?: return
+        val selectedId = _state.value.selectedProviderId
+        if (selectedId == null) {
+            _state.update { it.copy(error = "请先选择 Provider") }
+            return
+        }
         val provider = _state.value.providers.firstOrNull {
-            it.id == _state.value.selectedProviderId && it.enabled
+            it.id == selectedId && it.enabled
         } ?: run {
-            _state.update { it.copy(error = "没有可用的 Provider") }
+            _state.update { it.copy(error = "Provider 不可用") }
             return
         }
         _state.update { it.copy(busy = true, error = null, status = "创建会话中") }

@@ -315,7 +315,10 @@ private fun ProviderPicker(state: UiState, model: MscViewModel) {
             }
         }
         Spacer(Modifier.width(8.dp))
-        Button(onClick = model::createSession, enabled = !state.busy) {
+        Button(
+            onClick = model::createSession,
+            enabled = !state.busy && state.selectedProviderId != null,
+        ) {
             Text("新建")
         }
     }

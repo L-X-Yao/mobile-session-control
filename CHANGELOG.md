@@ -18,6 +18,9 @@
   debug build paired over adb reverse, selected a native provider and completed
   a real turn (`NATIVE-PHONE-OK`). ADB-driven; human hands-on remains
   `NO_DATA`.
+- Android provider selection is explicit; new-session creation stays disabled
+  until a provider is chosen, so a native relay cannot silently default to a
+  live session.
 
 ## 0.1.5 — 2026-11-21
 

@@ -8,7 +8,8 @@ attached to the GitHub release.
 ## Implemented
 
 - Pair with a relay URL and one-time code, or scan the pairing QR code.
-- Session list, provider selection and new session creation.
+- Session list, explicit provider selection and new session creation; the
+  create button stays disabled until a provider is chosen.
 - Streaming poll, user/assistant bubbles, permission allow/deny, question
   options, Stop and close.
 - Biometric/device-credential app lock when a device token is stored.
