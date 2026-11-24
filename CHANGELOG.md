@@ -2,25 +2,23 @@
 
 ## Unreleased
 
+## 0.1.6 — 2026-11-24
+
 - Native mode inherits `ANTHROPIC_*` and proxy variables, so a resumed session
   uses the same endpoint and model as the shell that starts the relay.
-- Native provider labels are truncated to the relay's 64-character catalog
-  limit; long session titles no longer prevent native mode from starting.
+- Native provider labels are capped at the relay's 64-character catalog limit
+  and reserve the `[active→fork]` marker when a title is truncated.
 - Native same-session resume on DeepSeek now completes. The SDK streaming
   resume sent a `tool_definition` block, which DeepSeek rejects; native mode
   defaults `CLAUDE_CODE_INLINE_TOOLS=0` so the request carries `tool_reference`.
-  A real rerun returned `NATIVE-RESUME-OK`, and a real fork of an active test
-  session returned `NATIVE-FORK-OK` with a new session ID and an unchanged
-  source transcript. Phone control over a native session remains `NO_DATA`.
-- Native provider labels reserve the `[active→fork]` marker when a long title
-  is truncated.
-- Native sessions can be controlled from the Android client: a side-by-side
-  debug build paired over adb reverse, selected a native provider and completed
-  a real turn (`NATIVE-PHONE-OK`). ADB-driven; human hands-on remains
+  A real rerun returned `NATIVE-RESUME-OK`.
+- Native fork of an active test session returned `NATIVE-FORK-OK`, created a
+  new session ID and left the source transcript unchanged during the turn.
+- The Android client controlled a native session end to end over adb reverse
+  (`NATIVE-PHONE-OK`); this was ADB-driven, so human hands-on remains
   `NO_DATA`.
 - Android provider selection is explicit; new-session creation stays disabled
-  until a provider is chosen, so a native relay cannot silently default to a
-  live session.
+  until a provider is chosen. Android unit tests run in CI.
 
 ## 0.1.5 — 2026-11-21
 

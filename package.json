@@ -1,6 +1,6 @@
 {
   "name": "mobile-session-control",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "description": "Private, self-hosted phone control for local Claude Code-compatible sessions across DeepSeek, Kimi and GLM",
   "license": "MIT",
