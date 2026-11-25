@@ -171,12 +171,18 @@ service. Project trust state is therefore not inherited from the terminal's
 apply, while hooks from settings files can still run. This differs from a
 normal terminal session and is not yet exercised on a real provider turn.
 Project settings are not covered by `strictMcpConfig`. Native providers are
-disabled and labelled `[blocked:project]` when the project settings at the
-cwd, git root or main worktree root are unreadable/malformed or contain
-`hooks`, `env`, `apiKeyHelper`, `awsAuthRefresh`, `awsCredentialExport`,
-`gcpAuthRefresh` or `statusLine`; project skill frontmatter with `hooks` is
-blocked too. Existing relay sessions for such a project also refuse a new host.
+disabled and labelled `[blocked:project]` when project settings at the cwd, git
+root or main worktree root are unreadable/malformed or contain any key other
+than `$schema`; this fail-closed allowlist covers hooks, env overrides, helper
+commands, statusLine and future settings keys. Project skill frontmatter with
+`hooks` or `allowed-tools` is blocked too. The scan covers cwd-to-git-root
+levels, linked-worktree main roots and bounded cwd subdirectories, following
+symlinks. Existing relay sessions for such a project also refuse a new host.
 Clean projects keep project `CLAUDE.md`.
+
+A real project with hooks or a permission allowlist (for example a local
+ArduPilot checkout) will therefore be disabled until those settings are removed
+or a future reviewed per-project opt-in exists.
 
 The service process reads the real `~/.claude`; the worker writes resumed
 transcripts there. Native workers run with a private temporary `HOME` and

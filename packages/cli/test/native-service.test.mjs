@@ -154,7 +154,7 @@ test('catalog blocks project execution settings and scans the git root', (t) => 
     fs.mkdirSync(path.join(clean, '.claude'));
     fs.writeFileSync(
         path.join(clean, '.claude', 'settings.json'),
-        JSON.stringify({ permissions: { allow: [] } }),
+        JSON.stringify({ $schema: 'https://json.schemastore.org/claude-code-settings.json' }),
     );
     assert.equal(projectIsBlocked(clean), false);
 
@@ -162,6 +162,12 @@ test('catalog blocks project execution settings and scans the git root', (t) => 
         env: { env: { ANTHROPIC_BASE_URL: 'https://elsewhere.invalid' } },
         apiKeyHelper: { apiKeyHelper: 'printf secret' },
         statusLine: { statusLine: { command: 'printf status' } },
+        otelHeadersHelper: { otelHeadersHelper: 'printf header' },
+        fileSuggestion: { fileSuggestion: { command: 'printf file' } },
+        sandbox: { sandbox: { network: { httpProxyPort: 8080 } } },
+        forceLoginMethod: { forceLoginMethod: 'claudeai' },
+        modelOverrides: { modelOverrides: { 'claude-sonnet-5': 'other' } },
+        permissions: { permissions: { allow: ['Bash'] } },
     })) {
         const project = path.join(dir, name);
         fs.mkdirSync(path.join(project, '.claude'), { recursive: true });
@@ -195,6 +201,50 @@ test('catalog blocks project execution settings and scans the git root', (t) => 
         '---\nname: demo\nhooks:\n  PreToolUse:\n    - matcher: Bash\n---\n',
     );
     assert.equal(projectIsBlocked(skillRoot), true);
+
+    const quoted = path.join(dir, 'skill-quoted');
+    fs.mkdirSync(path.join(quoted, '.claude', 'skills', 'demo'), { recursive: true });
+    fs.writeFileSync(
+        path.join(quoted, '.claude', 'skills', 'demo', 'SKILL.md'),
+        '---\nname: demo\n"hooks":\n  PreToolUse: []\n---\n',
+    );
+    assert.equal(projectIsBlocked(quoted), true);
+
+    const allowed = path.join(dir, 'skill-allowed');
+    fs.mkdirSync(path.join(allowed, '.claude', 'skills', 'demo'), { recursive: true });
+    fs.writeFileSync(
+        path.join(allowed, '.claude', 'skills', 'demo', 'SKILL.md'),
+        '---\nname: demo\nallowed-tools: Bash\n---\n',
+    );
+    assert.equal(projectIsBlocked(allowed), true);
+
+    const target = path.join(dir, 'target-skill');
+    const linkedSkills = path.join(dir, 'skill-link', '.claude', 'skills');
+    fs.mkdirSync(target, { recursive: true });
+    fs.writeFileSync(path.join(target, 'SKILL.md'), '---\nname: linked\nallowed-tools: Bash\n---\n');
+    fs.mkdirSync(linkedSkills, { recursive: true });
+    fs.symlinkSync(target, path.join(linkedSkills, 'linked'), 'dir');
+    assert.equal(projectIsBlocked(path.join(dir, 'skill-link')), true);
+
+    const ancestorRepo = path.join(dir, 'ancestor-repo');
+    const ancestorSub = path.join(ancestorRepo, 'pkg');
+    const ancestorDeep = path.join(ancestorSub, 'deep');
+    fs.mkdirSync(path.join(ancestorRepo, '.git'), { recursive: true });
+    fs.mkdirSync(path.join(ancestorSub, '.claude', 'skills', 'demo'), { recursive: true });
+    fs.mkdirSync(ancestorDeep);
+    fs.writeFileSync(
+        path.join(ancestorSub, '.claude', 'skills', 'demo', 'SKILL.md'),
+        '---\nname: demo\nallowed-tools: Bash\n---\n',
+    );
+    assert.equal(projectIsBlocked(ancestorDeep), true);
+
+    const nested = path.join(dir, 'nested');
+    fs.mkdirSync(path.join(nested, 'child', '.claude', 'skills', 'demo'), { recursive: true });
+    fs.writeFileSync(
+        path.join(nested, 'child', '.claude', 'skills', 'demo', 'SKILL.md'),
+        '---\nname: demo\nallowed-tools: Bash\n---\n',
+    );
+    assert.equal(projectIsBlocked(nested), true);
 
     const main = path.join(dir, 'main');
     const linked = path.join(dir, 'linked');

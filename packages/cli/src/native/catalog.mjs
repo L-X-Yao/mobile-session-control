@@ -15,18 +15,14 @@ const PROJECT_SETTINGS_FILES = [
     path.join('.claude', 'settings.json'),
     path.join('.claude', 'settings.local.json'),
 ];
-const PROJECT_EXECUTION_KEYS = new Set([
-    'hooks',
-    'env',
-    'apiKeyHelper',
-    'awsAuthRefresh',
-    'awsCredentialExport',
-    'gcpAuthRefresh',
-    'statusLine',
-]);
+// Project settings are untrusted repository code. Rather than trying to
+// enumerate every command/redirect key (the reference keeps growing), accept
+// only schema metadata and reject any other key.
+const PROJECT_SETTINGS_ALLOWED_KEYS = new Set(['$schema']);
 
 function projectRoots(cwd) {
     const roots = [cwd];
+    const walked = [cwd];
     let current = cwd;
     while (true) {
         const git = path.join(current, '.git');
@@ -41,33 +37,109 @@ function projectRoots(cwd) {
                         // three levels up from the worktree metadata directory.
                         roots.push(path.resolve(current, match[1].trim(), '..', '..', '..'));
                     } else {
-                        return { roots: [...new Set(roots)], blocked: true };
+                        return { roots: [...new Set(roots)], chain: walked, blocked: true };
                     }
                 }
             } catch {
-                return { roots: [...new Set(roots)], blocked: true };
+                return { roots: [...new Set(roots)], chain: walked, blocked: true };
             }
-            break;
+            return { roots: [...new Set(roots)], chain: [...new Set(walked)], blocked: false };
         }
         const parent = path.dirname(current);
         if (parent === current) break;
         current = parent;
+        walked.push(current);
     }
-    return { roots: [...new Set(roots)], blocked: false };
+    // Not a git checkout: project settings/skills are read from cwd only.
+    return { roots: [...new Set(roots)], chain: [cwd], blocked: false };
 }
 
-function skillHasHooks(file) {
+function skillIsBlocked(file) {
+    let text;
     try {
-        const text = fs.readFileSync(file, 'utf8');
-        const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
-        return Boolean(match && /^\s*hooks\s*:/m.test(match[1]));
+        text = fs.readFileSync(file, 'utf8');
     } catch (error) {
         return error.code !== 'ENOENT';
     }
+    const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
+    if (!match) return false;
+    return /^\s*["']?(hooks|allowed-tools)["']?\s*:/m.test(match[1]);
+}
+
+function scanSkillTree(dir, state) {
+    let real;
+    try {
+        real = fs.realpathSync(dir);
+    } catch {
+        return true;
+    }
+    if (state.seen.has(real)) return false;
+    if (state.dirs >= state.maxDirs) return true;
+    state.seen.add(real);
+    state.dirs += 1;
+    let entries;
+    try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch (error) {
+        return error.code !== 'ENOENT';
+    }
+    for (const entry of entries) {
+        const full = path.join(dir, entry.name);
+        let stat;
+        try {
+            stat = fs.statSync(full);
+        } catch {
+            return true;
+        }
+        if (stat.isDirectory()) {
+            if (scanSkillTree(full, state)) return true;
+        } else if (stat.isFile() && entry.name === 'SKILL.md' && skillIsBlocked(full)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function scanNestedSkillDirs(dir, depth, state) {
+    if (depth > 12) return true;
+    let real;
+    try {
+        real = fs.realpathSync(dir);
+    } catch {
+        return true;
+    }
+    if (state.seenDirs.has(real)) return false;
+    if (state.dirs >= state.maxDirs) return true;
+    state.seenDirs.add(real);
+    state.dirs += 1;
+    let entries;
+    try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch (error) {
+        return error.code !== 'ENOENT';
+    }
+    for (const entry of entries) {
+        if (['node_modules', '.git', '.cache', 'dist', 'build'].includes(entry.name)) continue;
+        const full = path.join(dir, entry.name);
+        let stat;
+        try {
+            stat = fs.statSync(full);
+        } catch {
+            return true;
+        }
+        if (!stat.isDirectory()) continue;
+        if (entry.name === '.claude') {
+            const skills = path.join(full, 'skills');
+            if (fs.existsSync(skills) && scanSkillTree(skills, state)) return true;
+            continue;
+        }
+        if (scanNestedSkillDirs(full, depth + 1, state)) return true;
+    }
+    return false;
 }
 
 export function projectIsBlocked(cwd) {
-    const { roots, blocked } = projectRoots(cwd);
+    const { roots, chain, blocked } = projectRoots(cwd);
     if (blocked) return true;
     for (const root of roots) {
         for (const relative of PROJECT_SETTINGS_FILES) {
@@ -88,23 +160,23 @@ export function projectIsBlocked(cwd) {
                 return true;
             }
             if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return true;
-            for (const key of PROJECT_EXECUTION_KEYS) {
-                if (Object.hasOwn(parsed, key)) return true;
+            for (const key of Object.keys(parsed)) {
+                if (!PROJECT_SETTINGS_ALLOWED_KEYS.has(key)) return true;
             }
         }
-        const skills = path.join(root, '.claude', 'skills');
-        let entries;
-        try {
-            entries = fs.readdirSync(skills, { withFileTypes: true });
-        } catch (error) {
-            if (error.code === 'ENOENT') continue;
-            return true;
-        }
-        for (const entry of entries) {
-            if (!entry.isDirectory()) continue;
-            if (skillHasHooks(path.join(skills, entry.name, 'SKILL.md'))) return true;
-        }
     }
+    const state = {
+        seen: new Set(),
+        seenDirs: new Set(),
+        dirs: 0,
+        maxDirs: 20000,
+    };
+    for (const root of chain) {
+        const skills = path.join(root, '.claude', 'skills');
+        if (fs.existsSync(skills) && scanSkillTree(skills, state)) return true;
+    }
+    // Skills in a cwd subdirectory load when that directory is first read.
+    if (scanNestedSkillDirs(cwd, 0, state)) return true;
     return false;
 }
 
@@ -197,6 +269,7 @@ export function buildNativeCatalog(sessions, activeMap, {
     if (!Array.isArray(sessions)) throw new Error('SERVICE_NATIVE_SESSIONS_INVALID');
     const used = new Set();
     const reserved = new Set(idBySession.values());
+    const blockedByCwd = new Map();
     const providers = [];
     const byId = new Map();
     for (const session of sessions.slice(0, max)) {
@@ -211,7 +284,11 @@ export function buildNativeCatalog(sessions, activeMap, {
         }
         const id = assignProviderId(session.sessionId, idBySession, used, reserved);
         const live = activeMap.get(session.sessionId);
-        const blocked = projectIsBlocked(session.cwd);
+        let blocked = blockedByCwd.get(session.cwd);
+        if (blocked === undefined) {
+            blocked = projectIsBlocked(session.cwd);
+            blockedByCwd.set(session.cwd, blocked);
+        }
         const title = session.customTitle || session.summary || session.firstPrompt || 'untitled';
         byId.set(id, {
             sessionId: session.sessionId,

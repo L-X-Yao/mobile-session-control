@@ -110,10 +110,10 @@ control remains `NO_DATA`.
 - Native workers set `strictMcpConfig: true`; project `.mcp.json` and other MCP
   sources are not connected. Project `CLAUDE.md` is expected to load for clean
   projects, but this was not yet measured on a real provider turn. Projects
-  whose settings (cwd, git root or main worktree root) contain `hooks`, `env`,
-  helpers or `statusLine`, or whose skill frontmatter defines hooks, are
-  disabled and labelled `[blocked:project]`. Project trust and
-  `permissions.allow` are not inherited from the terminal's `~/.claude.json`.
+  whose settings contain any key other than `$schema` (cwd, git root or main
+  worktree root), or whose skills define `hooks`/`allowed-tools`, are disabled
+  and labelled `[blocked:project]`. Project trust and `permissions.allow` are
+  not inherited from the terminal's `~/.claude.json`.
 - The example unit uses `ProtectSystem=strict`, so project directories are
   read-only unless listed. Real file-editing takeover needs the reviewed unit
   change; see `docs/SERVICE.md`.
