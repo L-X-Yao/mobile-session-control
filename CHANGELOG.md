@@ -4,7 +4,9 @@
 
 - A real-mode service can add native Claude Code sessions through an optional
   `native` object. The catalog refreshes in the background, uses stable hashed
-  provider IDs, and joins the existing Phase 9 providers in one relay.
+  provider IDs, and joins the existing Phase 9 providers in one relay. Native
+  workers use a private temporary HOME and `CLAUDE_CONFIG_DIR`, so the real
+  HOME root stays read-only.
 - The web provider picker starts on an explicit placeholder and never
   auto-selects the first provider; a session cannot be created until one is
   chosen.

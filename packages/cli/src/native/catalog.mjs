@@ -55,12 +55,13 @@ export function readActiveSessions(claudePath = 'claude') {
     return parseActive(result.stdout);
 }
 
-export async function readActiveSessionsAsync(claudePath = 'claude') {
+export async function readActiveSessionsAsync(claudePath = 'claude', env = process.env) {
     try {
         const { stdout } = await execFileAsync(claudePath, ['agents', '--json'], {
             encoding: 'utf8',
             maxBuffer: ACTIVE_LIST_MAX_BUFFER,
             timeout: 10_000,
+            env,
         });
         return parseActive(stdout);
     } catch {

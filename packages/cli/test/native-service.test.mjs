@@ -180,6 +180,32 @@ test('resolveHost rechecks the live list at launch', async (t) => {
     assert.equal(active.env.CLAUDE_FORK_SESSION, '1');
 });
 
+test('native runtime uses a private HOME and the real config dir', async (t) => {
+    const dir = tempDir(t);
+    const home = path.join(dir, 'home');
+    fs.mkdirSync(home, { mode: 0o700 });
+    const configDir = path.join(home, '.claude');
+    const agents = agentsScript(dir, [
+        `case "$HOME" in ${os.tmpdir()}/msc-native-home-*) ;; *) exit 3 ;; esac`,
+        `[ "$CLAUDE_CONFIG_DIR" = "${configDir}" ] || exit 3`,
+        'echo "[]"',
+    ].join('\n'));
+    const runtime = await createNativeRuntime({
+        sdkPath: FAKE_SDK,
+        claudePath: agents,
+        home,
+        limit: 1,
+        refreshMs: 60_000,
+    });
+    t.after(() => runtime.close());
+    assert.equal(runtime.providers().length, 1);
+    const host = await runtime.resolveHost({
+        session: { provider: { id: runtime.providers()[0].id } },
+    });
+    assert.equal(host.env.CLAUDE_CONFIG_DIR, configDir);
+    assert.match(host.env.HOME, /msc-native-home-/);
+});
+
 test('runtime exposes a native provider and forks an active session', async (t) => {
     const dir = tempDir(t);
     const home = path.join(dir, 'home');
@@ -201,7 +227,9 @@ test('runtime exposes a native provider and forks an active session', async (t) 
 
     const host = await runtime.resolveHost({ session: { provider: { id: providers[0].id } } });
     assert.equal(host.command, process.execPath);
-    assert.equal(host.env.HOME, home);
+    assert.notEqual(host.env.HOME, home);
+    assert.ok(fs.statSync(host.env.HOME).isDirectory());
+    assert.equal(host.env.CLAUDE_CONFIG_DIR, path.join(home, '.claude'));
     assert.equal(host.env.CLAUDE_AGENT_SDK_PATH, FAKE_SDK);
     assert.equal(host.env.CLAUDE_CODE_INLINE_TOOLS, '0');
     assert.equal(host.env.CLAUDE_CODE_SESSION_ID, undefined);

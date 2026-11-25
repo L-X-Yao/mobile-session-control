@@ -2,6 +2,7 @@
 // catalog is refreshed in the background so sessions created after service
 // start appear without a restart. Active sessions are always forked.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -65,6 +66,18 @@ export async function createNativeRuntime({
         throw new Error('SERVICE_NATIVE_HOME_INVALID');
     }
     const sdk = await loadNativeSdk(sdkPath);
+    const configDir = path.join(home, '.claude');
+    fs.mkdirSync(configDir, { recursive: true, mode: 0o700 });
+    // Keep HOME writable and temporary so `claude agents` can create its
+    // global .claude.json temp sibling, while the real session store stays in
+    // the read-write .claude config dir. This avoids a writable HOME root.
+    const runtimeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'msc-native-home-'));
+    fs.chmodSync(runtimeHome, 0o700);
+    const nativeEnv = {
+        ...process.env,
+        HOME: runtimeHome,
+        CLAUDE_CONFIG_DIR: configDir,
+    };
     const registry = loadRegistry(registryFile);
     const idBySession = new Map(
         [...registry].map(([id, entry]) => [entry.sessionId, id]),
@@ -75,7 +88,7 @@ export async function createNativeRuntime({
 
     async function refresh() {
         const active = await readActiveSessionsAsync(
-            claudePath || process.env.CLAUDE_CODE_PATH || 'claude',
+            claudePath || process.env.CLAUDE_CODE_PATH || 'claude', nativeEnv,
         );
         if (!active.ok) throw new Error('SERVICE_NATIVE_ACTIVE_LIST_FAILED');
         const listed = await sdk.listSessions({ limit });
@@ -99,7 +112,12 @@ export async function createNativeRuntime({
         log(`native catalog: ${catalog.providers.length} session(s), ${active.map.size} active`);
     }
 
-    await refresh();
+    try {
+        await refresh();
+    } catch (error) {
+        fs.rmSync(runtimeHome, { recursive: true, force: true });
+        throw error;
+    }
     const timer = setInterval(() => {
         if (closed) return;
         refresh().catch((error) => {
@@ -118,7 +136,7 @@ export async function createNativeRuntime({
             // list at launch so a session started in a terminal is forked.
             if (Date.now() - lastOkAt > refreshMs * 3) return null;
             const active = await readActiveSessionsAsync(
-                claudePath || process.env.CLAUDE_CODE_PATH || 'claude',
+                claudePath || process.env.CLAUDE_CODE_PATH || 'claude', nativeEnv,
             );
             if (!active.ok) return null;
             entry.active = active.map.has(entry.sessionId);
@@ -128,7 +146,8 @@ export async function createNativeRuntime({
                 return null;
             }
             const env = {
-                HOME: home,
+                HOME: runtimeHome,
+                CLAUDE_CONFIG_DIR: configDir,
                 PATH: claudePath
                     ? `${path.dirname(claudePath)}:${SAFE_PATH}`
                     : SAFE_PATH,
@@ -151,6 +170,7 @@ export async function createNativeRuntime({
         close: () => {
             closed = true;
             clearInterval(timer);
+            fs.rmSync(runtimeHome, { recursive: true, force: true });
         },
     };
 }

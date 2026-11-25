@@ -102,12 +102,13 @@ control remains `NO_DATA`.
 - Native mode loads the real user settings and transcripts. It is intentionally
   not the isolated fake-host path. Use it only on a trusted host and private
   network.
-- The durable service reads the real `~/.claude`; resumed workers write session
-  transcripts there. Keep `ProtectHome=read-only` and allow-list only the
-  observed paths plus the service state directory. The exact write set was not
-  measured against a real provider in offline tests.
+- The durable service reads the real `~/.claude`; resumed workers use a private
+  temporary HOME and write session transcripts to `CLAUDE_CONFIG_DIR`. Keep
+  `ProtectHome=read-only` and allow-list `%h/.claude` plus each project root
+  native tools may edit. The exact write set was not measured in a real
+  sandbox.
 - The example unit uses `ProtectSystem=strict`, so project directories are
-  read-only to native tools. Real file-editing takeover needs a reviewed unit
+  read-only unless listed. Real file-editing takeover needs the reviewed unit
   change; see `docs/SERVICE.md`.
 - There is no attach API for an arbitrary foreground `claude` process. Active
   sessions are forked, not hot-attached.
