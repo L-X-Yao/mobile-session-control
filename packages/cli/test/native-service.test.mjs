@@ -157,6 +157,33 @@ test('catalog blocks a project whose settings define hooks', (t) => {
     assert.equal(projectHasHooks(malformed), true);
 });
 
+test('resolveHost refuses a project with settings hooks', async (t) => {
+    const dir = tempDir(t);
+    const home = path.join(dir, 'home');
+    const work = path.join(dir, 'work');
+    fs.mkdirSync(home, { mode: 0o700 });
+    fs.mkdirSync(path.join(work, '.claude'), { recursive: true });
+    fs.writeFileSync(
+        path.join(work, '.claude', 'settings.json'),
+        JSON.stringify({ hooks: { PreToolUse: [] } }),
+    );
+    const sdk = path.join(dir, 'sdk.mjs');
+    fs.writeFileSync(sdk, `export async function listSessions() {
+        return [{ sessionId: '${SESSION_ID}', cwd: ${JSON.stringify(work)}, customTitle: 'Hooky' }];
+    }\n`);
+    const runtime = await createNativeRuntime({
+        sdkPath: sdk,
+        claudePath: agentsScript(dir, 'echo "[]"'),
+        home,
+        limit: 1,
+        refreshMs: 60_000,
+    });
+    t.after(() => runtime.close());
+    const [provider] = runtime.providers();
+    assert.equal(provider.enabled, false);
+    assert.equal(await runtime.resolveHost({ session: { provider: { id: provider.id } } }), null);
+});
+
 test('active listing fails closed on a non-zero or malformed command', (t) => {
     const dir = tempDir(t);
     const good = agentsScript(dir, `echo '[{"sessionId":"${SESSION_ID}"}]'`);
