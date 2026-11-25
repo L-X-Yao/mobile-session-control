@@ -223,6 +223,20 @@ Keep one TUN owner at a time, or switch the proxy client to its system-proxy
 mode so it no longer claims the system route. This conflict affects the external
 entry path only; `127.0.0.1:8787` keeps running either way.
 
+### WSL2 with Windows Tailscale
+
+Windows Tailscale `serve` proxies to Windows loopback. A relay in WSL that binds
+`127.0.0.1` is not reachable from Windows loopback on some setups. Bridge it:
+
+- Run a TCP forwarder in WSL on a fixed port (for example `8791`) to
+  `127.0.0.1:8787`.
+- Add a Windows `netsh interface portproxy` from `127.0.0.1:8787` to
+  `<WSL-IP>:8791`.
+- Refresh the portproxy after a WSL restart; the WSL address changes. A logon
+  scheduled task can re-read `wsl.exe hostname -I` and update the rule.
+
+Keep both listeners private. Do not expose `8791` beyond the Windows host.
+
 ## Boundaries and residuals
 
 - Loopback only. The relay rejects non-loopback binds; remote access is a
