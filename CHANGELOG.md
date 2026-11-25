@@ -8,8 +8,8 @@
   workers use a private temporary HOME and `CLAUDE_CONFIG_DIR`, so the real
   HOME root stays read-only, and set `strictMcpConfig: true` so project
   `.mcp.json` cannot start commands outside the phone approval gate. Projects
-  that define hooks in `.claude/settings*.json` are disabled as
-  `[blocked:hooks]`.
+  whose settings contain hooks, env overrides, helper commands or statusLine,
+  or whose skills define hooks, are disabled as `[blocked:project]`.
 - The web provider picker starts on an explicit placeholder and never
   auto-selects the first provider; a session cannot be created until one is
   chosen.

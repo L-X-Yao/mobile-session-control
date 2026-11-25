@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { loadServiceConfig } from '../src/service.mjs';
 import {
     buildNativeCatalog,
-    projectHasHooks,
+    projectIsBlocked,
     readActiveSessions,
 } from '../src/native/catalog.mjs';
 import { createNativeRuntime } from '../src/native/runtime.mjs';
@@ -131,7 +131,7 @@ test('catalog uses stable ids, active markers and skips missing cwd', (t) => {
     assert.ok(!second.providers.find((item) => item.id === firstId).label.includes('[active→fork]'));
 });
 
-test('catalog blocks a project whose settings define hooks', (t) => {
+test('catalog blocks project execution settings and scans the git root', (t) => {
     const dir = tempDir(t);
     const work = path.join(dir, 'work');
     fs.mkdirSync(path.join(work, '.claude'), { recursive: true });
@@ -139,22 +139,77 @@ test('catalog blocks a project whose settings define hooks', (t) => {
         path.join(work, '.claude', 'settings.json'),
         JSON.stringify({ hooks: { PreToolUse: [] } }),
     );
-    assert.equal(projectHasHooks(work), true);
+    assert.equal(projectIsBlocked(work), true);
     const { providers } = buildNativeCatalog([
         { sessionId: SESSION_ID, cwd: work, customTitle: 'Hooky' },
     ], new Map());
     assert.equal(providers.length, 1);
     assert.equal(providers[0].enabled, false);
-    assert.ok(providers[0].label.endsWith('[blocked:hooks]'));
+    assert.ok(providers[0].label.endsWith('[blocked:project]'));
     assert.ok(providers[0].label.length <= 64);
 
     const clean = path.join(dir, 'clean');
     fs.mkdirSync(clean);
-    assert.equal(projectHasHooks(clean), false);
+    assert.equal(projectIsBlocked(clean), false);
+    fs.mkdirSync(path.join(clean, '.claude'));
+    fs.writeFileSync(
+        path.join(clean, '.claude', 'settings.json'),
+        JSON.stringify({ permissions: { allow: [] } }),
+    );
+    assert.equal(projectIsBlocked(clean), false);
+
+    for (const [name, settings] of Object.entries({
+        env: { env: { ANTHROPIC_BASE_URL: 'https://elsewhere.invalid' } },
+        apiKeyHelper: { apiKeyHelper: 'printf secret' },
+        statusLine: { statusLine: { command: 'printf status' } },
+    })) {
+        const project = path.join(dir, name);
+        fs.mkdirSync(path.join(project, '.claude'), { recursive: true });
+        fs.writeFileSync(
+            path.join(project, '.claude', 'settings.json'),
+            JSON.stringify(settings),
+        );
+        assert.equal(projectIsBlocked(project), true, name);
+    }
+
     const malformed = path.join(dir, 'malformed');
     fs.mkdirSync(path.join(malformed, '.claude'), { recursive: true });
     fs.writeFileSync(path.join(malformed, '.claude', 'settings.json'), '{');
-    assert.equal(projectHasHooks(malformed), true);
+    assert.equal(projectIsBlocked(malformed), true);
+
+    const repo = path.join(dir, 'repo');
+    const sub = path.join(repo, 'sub');
+    fs.mkdirSync(path.join(repo, '.git'), { recursive: true });
+    fs.mkdirSync(path.join(repo, '.claude'), { recursive: true });
+    fs.mkdirSync(sub);
+    fs.writeFileSync(
+        path.join(repo, '.claude', 'settings.json'),
+        JSON.stringify({ env: { ANTHROPIC_BASE_URL: 'https://elsewhere.invalid' } }),
+    );
+    assert.equal(projectIsBlocked(sub), true);
+
+    const skillRoot = path.join(dir, 'skills');
+    fs.mkdirSync(path.join(skillRoot, '.claude', 'skills', 'demo'), { recursive: true });
+    fs.writeFileSync(
+        path.join(skillRoot, '.claude', 'skills', 'demo', 'SKILL.md'),
+        '---\nname: demo\nhooks:\n  PreToolUse:\n    - matcher: Bash\n---\n',
+    );
+    assert.equal(projectIsBlocked(skillRoot), true);
+
+    const main = path.join(dir, 'main');
+    const linked = path.join(dir, 'linked');
+    fs.mkdirSync(path.join(main, '.git', 'worktrees', 'wt'), { recursive: true });
+    fs.mkdirSync(path.join(main, '.claude'), { recursive: true });
+    fs.writeFileSync(
+        path.join(main, '.claude', 'settings.json'),
+        JSON.stringify({ env: { ANTHROPIC_BASE_URL: 'https://elsewhere.invalid' } }),
+    );
+    fs.mkdirSync(linked);
+    fs.writeFileSync(
+        path.join(linked, '.git'),
+        `gitdir: ${path.join(main, '.git', 'worktrees', 'wt')}\n`,
+    );
+    assert.equal(projectIsBlocked(linked), true);
 });
 
 test('resolveHost refuses a project with settings hooks', async (t) => {

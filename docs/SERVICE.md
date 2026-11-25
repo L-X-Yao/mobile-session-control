@@ -170,10 +170,13 @@ service. Project trust state is therefore not inherited from the terminal's
 `~/.claude.json`; project `permissions.allow`/`additionalDirectories` may not
 apply, while hooks from settings files can still run. This differs from a
 normal terminal session and is not yet exercised on a real provider turn.
-Project settings hooks are not covered by `strictMcpConfig`. Native providers
-whose project `.claude/settings.json` or `settings.local.json` defines hooks are
-disabled and labelled `[blocked:hooks]`; existing relay sessions for such a
-project also refuse a new host. Hook-free projects keep project `CLAUDE.md`.
+Project settings are not covered by `strictMcpConfig`. Native providers are
+disabled and labelled `[blocked:project]` when the project settings at the
+cwd, git root or main worktree root are unreadable/malformed or contain
+`hooks`, `env`, `apiKeyHelper`, `awsAuthRefresh`, `awsCredentialExport`,
+`gcpAuthRefresh` or `statusLine`; project skill frontmatter with `hooks` is
+blocked too. Existing relay sessions for such a project also refuse a new host.
+Clean projects keep project `CLAUDE.md`.
 
 The service process reads the real `~/.claude`; the worker writes resumed
 transcripts there. Native workers run with a private temporary `HOME` and

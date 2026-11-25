@@ -11,33 +11,98 @@ import { nativeProviderLabel } from './label.mjs';
 
 const ACTIVE_LIST_MAX_BUFFER = 10 * 1024 * 1024;
 const execFileAsync = promisify(execFile);
-const PROJECT_HOOK_FILES = [
+const PROJECT_SETTINGS_FILES = [
     path.join('.claude', 'settings.json'),
     path.join('.claude', 'settings.local.json'),
 ];
+const PROJECT_EXECUTION_KEYS = new Set([
+    'hooks',
+    'env',
+    'apiKeyHelper',
+    'awsAuthRefresh',
+    'awsCredentialExport',
+    'gcpAuthRefresh',
+    'statusLine',
+]);
 
-export function projectHasHooks(cwd) {
-    for (const relative of PROJECT_HOOK_FILES) {
-        const file = path.join(cwd, relative);
-        let text;
+function projectRoots(cwd) {
+    const roots = [cwd];
+    let current = cwd;
+    while (true) {
+        const git = path.join(current, '.git');
+        if (fs.existsSync(git)) {
+            roots.push(current);
+            try {
+                if (fs.lstatSync(git).isFile()) {
+                    const match = /^gitdir:\s*(.+)$/m.exec(fs.readFileSync(git, 'utf8'));
+                    if (match) {
+                        // A linked worktree: gitdir points at
+                        // <main>/.git/worktrees/<name>; the main checkout is
+                        // three levels up from the worktree metadata directory.
+                        roots.push(path.resolve(current, match[1].trim(), '..', '..', '..'));
+                    } else {
+                        return { roots: [...new Set(roots)], blocked: true };
+                    }
+                }
+            } catch {
+                return { roots: [...new Set(roots)], blocked: true };
+            }
+            break;
+        }
+        const parent = path.dirname(current);
+        if (parent === current) break;
+        current = parent;
+    }
+    return { roots: [...new Set(roots)], blocked: false };
+}
+
+function skillHasHooks(file) {
+    try {
+        const text = fs.readFileSync(file, 'utf8');
+        const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
+        return Boolean(match && /^\s*hooks\s*:/m.test(match[1]));
+    } catch (error) {
+        return error.code !== 'ENOENT';
+    }
+}
+
+export function projectIsBlocked(cwd) {
+    const { roots, blocked } = projectRoots(cwd);
+    if (blocked) return true;
+    for (const root of roots) {
+        for (const relative of PROJECT_SETTINGS_FILES) {
+            const file = path.join(root, relative);
+            let text;
+            try {
+                text = fs.readFileSync(file, 'utf8');
+            } catch (error) {
+                if (error.code === 'ENOENT') continue;
+                return true;
+            }
+            let parsed;
+            try {
+                parsed = JSON.parse(text);
+            } catch {
+                // A malformed project settings file may still be interpreted
+                // by the CLI; fail closed rather than run its settings.
+                return true;
+            }
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return true;
+            for (const key of PROJECT_EXECUTION_KEYS) {
+                if (Object.hasOwn(parsed, key)) return true;
+            }
+        }
+        const skills = path.join(root, '.claude', 'skills');
+        let entries;
         try {
-            text = fs.readFileSync(file, 'utf8');
+            entries = fs.readdirSync(skills, { withFileTypes: true });
         } catch (error) {
             if (error.code === 'ENOENT') continue;
             return true;
         }
-        let parsed;
-        try {
-            parsed = JSON.parse(text);
-        } catch {
-            // A malformed project settings file may still be interpreted by
-            // the CLI; fail closed rather than run its hooks.
-            return true;
-        }
-        if (parsed && typeof parsed === 'object' && parsed.hooks) {
-            if (typeof parsed.hooks !== 'object' || parsed.hooks === null) return true;
-            if (Array.isArray(parsed.hooks) ? parsed.hooks.length > 0
-                : Object.keys(parsed.hooks).length > 0) return true;
+        for (const entry of entries) {
+            if (!entry.isDirectory()) continue;
+            if (skillHasHooks(path.join(skills, entry.name, 'SKILL.md'))) return true;
         }
     }
     return false;
@@ -146,7 +211,7 @@ export function buildNativeCatalog(sessions, activeMap, {
         }
         const id = assignProviderId(session.sessionId, idBySession, used, reserved);
         const live = activeMap.get(session.sessionId);
-        const blocked = projectHasHooks(session.cwd);
+        const blocked = projectIsBlocked(session.cwd);
         const title = session.customTitle || session.summary || session.firstPrompt || 'untitled';
         byId.set(id, {
             sessionId: session.sessionId,
@@ -161,7 +226,7 @@ export function buildNativeCatalog(sessions, activeMap, {
                 path.basename(session.cwd),
                 Boolean(live),
                 undefined,
-                blocked ? ' [blocked:hooks]' : '',
+                blocked ? ' [blocked:project]' : '',
             ),
             model: 'native',
             effort: 'low',
