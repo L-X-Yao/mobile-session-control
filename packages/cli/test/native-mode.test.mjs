@@ -147,7 +147,7 @@ test('native mode lists an active session, forks it and completes a fake turn', 
             { token: clientToken },
         );
         return events.body?.events?.some((event) => event.content
-            === 'FAKE-SDK-NATIVE:11111111-2222-4333-8444-555555555555:persist:default-sources:strict-mcp:fork');
+            === 'FAKE-SDK-NATIVE:11111111-2222-4333-8444-555555555555:persist:user:strict-mcp:fork');
     });
 
     child.kill('SIGTERM');

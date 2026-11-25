@@ -491,8 +491,11 @@ async function main() {
             // Native mode loads the user's real Claude settings and writes the
             // resumed session back to ~/.claude/projects. Isolated SDK mode
             // keeps the previous empty settings/no-persistence posture.
+            // Native mode loads only the trusted user settings. Project
+            // settings, skills, hooks and MCP stay out of the worker; project
+            // CLAUDE.md is therefore not loaded either.
             ...(native
-                ? { strictMcpConfig: true }
+                ? { settingSources: ['user'], strictMcpConfig: true }
                 : { settingSources: [] }),
             persistSession: native,
             ...(resume ? { resume } : {}),

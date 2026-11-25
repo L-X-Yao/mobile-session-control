@@ -8,7 +8,6 @@ import { fileURLToPath } from 'node:url';
 import {
     buildNativeCatalog,
     loadNativeSdk,
-    projectIsBlocked,
     readActiveSessionsAsync,
 } from './catalog.mjs';
 import { inheritedProviderEnv } from './env.mjs';
@@ -150,7 +149,6 @@ export async function createNativeRuntime({
             } catch {
                 return null;
             }
-            if (projectIsBlocked(entry.cwd)) return null;
             const env = {
                 HOME: runtimeHome,
                 CLAUDE_CONFIG_DIR: configDir,

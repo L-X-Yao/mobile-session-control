@@ -107,13 +107,10 @@ control remains `NO_DATA`.
   `ProtectHome=read-only` and allow-list `%h/.claude` plus each project root
   native tools may edit. The exact write set was not measured in a real
   sandbox.
-- Native workers set `strictMcpConfig: true`; project `.mcp.json` and other MCP
-  sources are not connected. Project `CLAUDE.md` is expected to load for clean
-  projects, but this was not yet measured on a real provider turn. Projects
-  whose settings contain any key other than `$schema` (cwd, git root or main
-  worktree root), or whose skills define `hooks`/`allowed-tools`, are disabled
-  and labelled `[blocked:project]`. Project trust and `permissions.allow` are
-  not inherited from the terminal's `~/.claude.json`.
+- Native workers load only user settings and set `strictMcpConfig: true`.
+  Project settings, skills, hooks, MCP and project `CLAUDE.md` are not loaded;
+  the real transcript and cwd are. Project trust and `permissions.allow` are
+  therefore not inherited from the terminal's `~/.claude.json`.
 - The example unit uses `ProtectSystem=strict`, so project directories are
   read-only unless listed. Real file-editing takeover needs the reviewed unit
   change; see `docs/SERVICE.md`.

@@ -158,31 +158,23 @@ provider environment. Put provider credentials in a mode-0600
 `EnvironmentFile=` referenced by the unit; there is no native key-file setting
 analogous to the Phase 9 wrapper key files.
 
-Native workers set `strictMcpConfig: true`: project, user, plugin and connector
-MCP servers are not connected, so a repository `.mcp.json` cannot start a
-command outside the phone approval gate. Project `CLAUDE.md` is expected to
-load, but this was not yet measured on a real provider turn. MCP in native
-sessions would need a separate reviewed opt-in. Project settings hooks are a
-separate code path; see the boundary below.
+Native workers load only `settingSources: ['user']` and set
+`strictMcpConfig: true`. Project settings, skills, hooks and MCP are not
+loaded, and project `CLAUDE.md` is not loaded either. A repository therefore
+cannot run a project hook, helper, skill or MCP server outside the phone
+approval gate. User-level settings and hooks remain available because they are
+the operator's own trusted configuration. MCP in native sessions would need a
+separate reviewed opt-in.
 
 The worker `HOME` is a fresh temporary directory shared by the workers of one
 service. Project trust state is therefore not inherited from the terminal's
 `~/.claude.json`; project `permissions.allow`/`additionalDirectories` may not
 apply, while hooks from settings files can still run. This differs from a
 normal terminal session and is not yet exercised on a real provider turn.
-Project settings are not covered by `strictMcpConfig`. Native providers are
-disabled and labelled `[blocked:project]` when project settings at the cwd, git
-root or main worktree root are unreadable/malformed or contain any key other
-than `$schema`; this fail-closed allowlist covers hooks, env overrides, helper
-commands, statusLine and future settings keys. Project skill frontmatter with
-`hooks` or `allowed-tools` is blocked too. The scan covers cwd-to-git-root
-levels, linked-worktree main roots and bounded cwd subdirectories, following
-symlinks. Existing relay sessions for such a project also refuse a new host.
-Clean projects keep project `CLAUDE.md`.
-
-A real project with hooks or a permission allowlist (for example a local
-ArduPilot checkout) will therefore be disabled until those settings are removed
-or a future reviewed per-project opt-in exists.
+Loading only user settings is a deliberate reduction from a normal terminal
+session: project `CLAUDE.md`, project skills, project permissions and project
+hooks do not apply. The conversation transcript and cwd are still the real
+ones. A future reviewed opt-in could re-enable selected project sources.
 
 The service process reads the real `~/.claude`; the worker writes resumed
 transcripts there. Native workers run with a private temporary `HOME` and

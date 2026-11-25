@@ -81,7 +81,7 @@ test('claude host passes native resume, persistence and fork options', async (t)
     const message = events.find((event) => event.type === 'assistant-message');
     assert.equal(
         message.content,
-        'FAKE-SDK-NATIVE:11111111-2222-4333-8444-555555555555:persist:default-sources:strict-mcp:fork',
+        'FAKE-SDK-NATIVE:11111111-2222-4333-8444-555555555555:persist:user:strict-mcp:fork',
     );
 });
 
@@ -104,7 +104,7 @@ test('claude host resumes without forking when CLAUDE_FORK_SESSION is absent', a
     const message = events.find((event) => event.type === 'assistant-message');
     assert.equal(
         message.content,
-        'FAKE-SDK-NATIVE:11111111-2222-4333-8444-555555555555:persist:default-sources:strict-mcp:same',
+        'FAKE-SDK-NATIVE:11111111-2222-4333-8444-555555555555:persist:user:strict-mcp:same',
     );
 });
 
