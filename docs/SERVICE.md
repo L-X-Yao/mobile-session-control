@@ -234,6 +234,9 @@ Windows Tailscale `serve` proxies to Windows loopback. A relay in WSL that binds
   `<WSL-IP>:8791`.
 - Refresh the portproxy after a WSL restart; the WSL address changes. A logon
   scheduled task can re-read `wsl.exe hostname -I` and update the rule.
+- Enable systemd user lingering (`loginctl enable-linger <user>`) so the relay
+  and bridge start at WSL boot, and add a `/etc/wsl.conf` `[boot] command=`
+  hook that triggers the Windows task after each WSL start.
 
 Keep both listeners private. Do not expose `8791` beyond the Windows host.
 
