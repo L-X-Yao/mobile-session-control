@@ -85,19 +85,20 @@ test('native mode lists an active session, forks it and completes a fake turn', 
     const providers = await request(`${base}/v1/providers`, { token: paired.body.token });
     assert.equal(providers.status, 200);
     assert.equal(providers.body.providers.length, 1);
-    assert.equal(providers.body.providers[0].id, 'native-1');
+    const provider = providers.body.providers[0];
+    assert.match(provider.id, /^native-[0-9a-f]{12}$/);
     // A long session title must be truncated to the relay's 64-char limit, and
     // the active marker must survive the truncation.
-    assert.ok(providers.body.providers[0].label.length <= 64);
-    assert.ok(providers.body.providers[0].label.startsWith('Fake native session'));
-    assert.ok(providers.body.providers[0].label.endsWith(' [active→fork]'));
+    assert.ok(provider.label.length <= 64);
+    assert.ok(provider.label.startsWith('接管 · Fake native session'));
+    assert.ok(provider.label.endsWith(' [active→fork]'));
 
     const created = await request(`${base}/v1/sessions`, {
         token: paired.body.token,
         method: 'POST',
         body: {
             provider: {
-                id: 'native-1', model: 'native', effort: 'low',
+                id: provider.id, model: 'native', effort: 'low',
                 transport: 'anthropic-compatible-sse',
             },
         },

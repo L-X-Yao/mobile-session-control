@@ -11,6 +11,12 @@
 # $HOME/msc-service) and list every writable root in ReadWritePaths, separated
 # by spaces.
 #
+# With the optional native section, the relay also needs write access to the
+# real Claude session store for resumed transcripts. Keep ProtectHome=read-only
+# and add only that path, for example:
+#   ReadWritePaths=@STATE_DIR@ %h/.claude
+# Verify the exact write set on a real session before enabling it.
+#
 # This unit binds the loopback relay only. Remote access must terminate at a
 # private-network proxy such as `tailscale serve`; do not expose the relay
 # directly. See docs/SERVICE.md before installing.

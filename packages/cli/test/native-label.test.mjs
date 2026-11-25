@@ -4,6 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
     ACTIVE_FORK_SUFFIX,
+    TAKEOVER_PREFIX,
     nativeProviderLabel,
     sanitizeLabel,
     truncateLabel,
@@ -37,7 +38,7 @@ test('reserves the active fork marker when truncating', () => {
 test('keeps a short title and project intact', () => {
     assert.equal(
         nativeProviderLabel('Fix resume', 'repo', false),
-        'Fix resume · repo',
+        `${TAKEOVER_PREFIX}Fix resume · repo`,
     );
-    assert.equal(nativeProviderLabel('', '', false), 'untitled');
+    assert.equal(nativeProviderLabel('', '', false), `${TAKEOVER_PREFIX}untitled`);
 });

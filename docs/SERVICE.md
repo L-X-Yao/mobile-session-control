@@ -21,6 +21,12 @@ inside the config are rejected. Required and optional fields:
 | `port` | no | Relay port, default `8787`; `0` picks an ephemeral port |
 | `pollMs` | no | Manager poll interval, 1-1000 ms, default 250 |
 | `provider` | fake only | Provider metadata: `id`, `label`, `model`, `effort`, `transport` |
+| `native` | no | Real mode only. Exposes local Claude Code sessions; fields below |
+| `native.sdkPath` | native yes | Absolute Agent SDK `sdk.mjs` path |
+| `native.home` | native yes | Absolute real HOME, an owned directory; `/` is rejected |
+| `native.claudePath` | no | Absolute `claude` executable for `agents --json`; defaults to `CLAUDE_CODE_PATH` or `claude` |
+| `native.limit` | no | Recent native sessions exposed, 1-200, default 20 |
+| `native.refreshMs` | no | Catalog refresh interval, 1000-300000 ms, default 30000 |
 | `fakeHost` | no | Absolute fake-host script; defaults to the repository fake |
 | `phase9Config` | real only | Absolute private Phase 9 profile file |
 | `stateFile` | real yes, fake no | Absolute state snapshot; enables restart persistence and defines the writable root for real mode |
@@ -110,6 +116,50 @@ The Phase 9 profile file owns wrapper and key-file paths; key values stay outsid
 the repository and the service process. Host runs use a fresh sanitized `HOME`,
 `CLAUDE_CONFIG_DIR` and temporary directory, as in `demo:real`.
 
+## Native sessions in real mode
+
+An optional `native` object adds the user's existing Claude Code sessions to
+the same provider list and phone client. It does not replace Phase 9 providers;
+new sessions still come from them.
+
+```json
+{
+  "mode": "real",
+  "port": 8787,
+  "phase9Config": "/absolute/private/phase9-config.json",
+  "stateFile": "/absolute/private/state.json",
+  "native": {
+    "sdkPath": "/absolute/path/@anthropic-ai/claude-agent-sdk/sdk.mjs",
+    "claudePath": "/home/<user>/.local/bin/claude",
+    "home": "/home/<user>",
+    "limit": 20,
+    "refreshMs": 30000
+  }
+}
+```
+
+Native providers are labelled `接管 · <title> · <project>`. IDs are stable
+hashes of the session ID, not list positions, so a refresh cannot rebind an
+open phone session to a different conversation. The catalog refreshes in the
+background; a newly created terminal session appears without a service restart.
+An active session is always forked; a stopped session is resumed in place. A
+mode-0600 `native-registry.json` beside the state file maps IDs to session IDs
+so an open relay session still resolves after a service restart, even when the
+native session is outside the recent list. Keep the state directory private.
+
+If `claude agents --json` fails at startup, the service refuses to start: it
+cannot prove which sessions are live. A later refresh failure keeps the last
+catalog and stops accepting new native hosts after three refresh intervals.
+Native workers inherit only `ANTHROPIC_*` and proxy variables from the service
+environment, plus the explicit SDK/Claude paths. One service still has one
+provider environment.
+
+The service process reads the real `~/.claude`; the worker writes resumed
+transcripts there. Under the systemd template, keep `ProtectHome=read-only` and
+add `ReadWritePaths=%h/.claude` (plus the state directory). Do not widen the
+home mount. The exact write set was not measured against a real provider in
+offline tests; verify it before enabling native mode in production.
+
 ## systemd user unit
 
 `deploy/msc-relay.service.example` is a template, not an installed unit. It binds
@@ -194,6 +244,15 @@ one of:
 | `SERVICE_FAKE_HOST_MISSING` | Fake host script does not exist |
 | `SERVICE_PHASE9_CONFIG_INVALID` | Real mode has no absolute `phase9Config` path |
 | `SERVICE_REAL_STATE_REQUIRED` | Real mode has no `stateFile`; there is no writable root to validate |
+| `SERVICE_NATIVE_REQUIRES_REAL` | A `native` object was supplied in fake mode |
+| `SERVICE_NATIVE_SDK_MISSING` | Native `sdkPath` is absent or not a file |
+| `SERVICE_NATIVE_SDK_INVALID` / `_LOAD_FAILED` | Loaded SDK has no `listSessions()` or failed to import |
+| `SERVICE_NATIVE_HOME_INVALID` / `_OWNER` / `_MISMATCH` | Native home is not an owned directory, is `/`, or differs from the process HOME |
+| `SERVICE_NATIVE_CLAUDE_MISSING` | Native `claudePath` is absent or not executable |
+| `SERVICE_NATIVE_ACTIVE_LIST_FAILED` | `claude agents --json` failed at startup |
+| `SERVICE_NATIVE_SESSIONS_INVALID` | `listSessions()` returned a non-array |
+| `SERVICE_PROVIDER_COLLISION` | A native provider ID collided with a Phase 9 provider |
+| `SERVICE_NATIVE_LIMIT_INVALID` / `_REFRESH_MS_INVALID` | Native numeric option out of range |
 | `SERVICE_EVENT_LOG_NOT_PRIVATE` | Existing event log is not an owner-only regular file |
 | `SERVICE_BASE_DIR_OUTSIDE_STATE` | Phase 9 `baseDir` is outside the state directory |
 | `SERVICE_EVENT_LOG_OUTSIDE_STATE` | `eventLog` is outside the state directory |
@@ -208,12 +267,19 @@ pass through unchanged.
 
 ```sh
 node --test packages/cli/test/service.test.mjs
+node --test packages/cli/test/native-service.test.mjs
 ```
 
-The test starts the service in fake mode on an ephemeral loopback port, pairs,
-runs one fake turn, closes the session, sends `SIGTERM`, restarts against the
-same state and replays the closed history. It also checks configuration
-rejections. No provider, phone, ADB, Tailscale or deployment is used.
+The first test starts the service in fake mode on an ephemeral loopback port,
+pairs, runs one fake turn, closes the session, sends `SIGTERM`, restarts against
+the same state and replays the closed history. It also checks configuration
+rejections.
+
+The native test starts a real-mode service with a fake Agent SDK and a fake
+`claude agents` command, exposes one native session, creates a relay session,
+forks it through the native child and completes a fake turn. It also checks
+stable IDs, active markers, missing cwd handling and native configuration
+rejections. No real provider, phone, ADB, Tailscale or deployment is used.
 
 ## Network proxy coexistence
 

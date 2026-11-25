@@ -13,34 +13,19 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { createRelay } from '../packages/server/src/relay.mjs';
 import { startSessionManager } from '../packages/cli/src/session/manager.mjs';
-import { nativeProviderLabel } from '../packages/cli/src/native/label.mjs';
+import {
+    buildNativeCatalog,
+    loadNativeSdk,
+    readActiveSessions,
+} from '../packages/cli/src/native/catalog.mjs';
+import { inheritedProviderEnv } from '../packages/cli/src/native/env.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CHILD = path.join(ROOT, 'packages/cli/src/session/claude-host-child.mjs');
 const WEB_DIR = path.join(ROOT, 'apps/web');
-const PROVIDER_TRANSPORT = 'anthropic-compatible-sse';
-
-// Native mode must reach the same provider endpoint and model as the shell
-// that starts it. Inherit only provider and proxy variables; launcher/session
-// variables such as CLAUDE_CODE_SESSION_ID stay out of the child.
-const INHERITED_ENV_NAMES = new Set([
-    'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY',
-    'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy',
-]);
-function inheritedProviderEnv(parent) {
-    const result = {};
-    for (const [name, value] of Object.entries(parent)) {
-        if (typeof value !== 'string') continue;
-        if (name.startsWith('ANTHROPIC_') || INHERITED_ENV_NAMES.has(name)) {
-            result[name] = value;
-        }
-    }
-    return result;
-}
 
 function fail(message) {
     process.stderr.write(`FAIL native: ${message}\n`);
@@ -72,66 +57,29 @@ const stateKeyFile = process.env.MSC_STATE_KEY_FILE
 
 let sdk;
 try {
-    sdk = await import(pathToFileURL(path.resolve(sdkPath)).href);
+    sdk = await loadNativeSdk(sdkPath);
 } catch (error) {
-    fail(`cannot load Agent SDK: ${error.message}`);
-}
-if (typeof sdk.listSessions !== 'function') fail('Agent SDK has no listSessions()');
-
-function activeSessions() {
-    const result = spawnSync(process.env.CLAUDE_CODE_PATH || 'claude', ['agents', '--json'], {
-        encoding: 'utf8', maxBuffer: 10 * 1024 * 1024,
-    });
-    if (result.status !== 0) return { ok: false, map: new Map() };
-    try {
-        const list = JSON.parse(result.stdout);
-        if (!Array.isArray(list)) return { ok: false, map: new Map() };
-        return {
-            ok: true,
-            map: new Map(list.filter((item) => item?.sessionId).map((item) => [
-                item.sessionId, { status: item.status || item.state || 'active', kind: item.kind },
-            ])),
-        };
-    } catch {
-        return { ok: false, map: new Map() };
-    }
+    fail(error.message);
 }
 
-const activeResult = activeSessions();
+const activeResult = readActiveSessions(process.env.CLAUDE_CODE_PATH || 'claude');
 if (!activeResult.ok) {
     // Resuming a live session in place could collide with the terminal that
     // owns it. Without a reliable active list, refuse rather than guess.
     fail('cannot list active Claude sessions; refusing to resume in place');
 }
-const active = activeResult.map;
-const sessions = (await sdk.listSessions({ limit }))
+const listed = await sdk.listSessions({ limit });
+if (!Array.isArray(listed)) fail('listSessions returned a non-array');
+const sessions = listed
     .sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0))
     .slice(0, limit);
 if (sessions.length === 0) fail('no native Claude Code sessions found');
 
-const selected = new Map();
-const providers = sessions.map((session, index) => {
-    const id = `native-${index + 1}`;
-    const title = session.customTitle || session.summary || session.firstPrompt || 'untitled';
-    const live = active.get(session.sessionId);
-    selected.set(id, {
-        sessionId: session.sessionId,
-        cwd: session.cwd,
-        active: Boolean(live),
-    });
-    return {
-        id,
-        label: nativeProviderLabel(
-            title,
-            path.basename(session.cwd || ''),
-            Boolean(live),
-        ),
-        model: 'native',
-        effort: 'low',
-        transport: PROVIDER_TRANSPORT,
-        enabled: true,
-    };
-});
+const { providers, byId } = buildNativeCatalog(
+    sessions, activeResult.map, { idBySession: new Map(), max: limit },
+);
+if (providers.length === 0) fail('no usable native Claude Code sessions found');
+const selected = byId;
 
 let relay = null;
 let manager = null;
@@ -189,7 +137,7 @@ try {
 }
 
 const base = (process.env.MSC_PUBLIC_URL || relay.url).replace(/\/$/, '');
-process.stdout.write(`native sessions: ${sessions.length}; active: ${active.size}\n`);
+process.stdout.write(`native sessions: ${providers.length}; active: ${activeResult.map.size}\n`);
 process.stdout.write(`phone: ${base}/#code=${encodeURIComponent(relay.pairingCode)}\n`);
 process.stdout.write(`state: ${stateFile}${stateKeyFile ? ' (encrypted)' : ' (plaintext; set MSC_STATE_KEY_FILE to encrypt)'}\n`);
 process.stdout.write('ctrl+c to stop; choosing an active session forks a copy\n');

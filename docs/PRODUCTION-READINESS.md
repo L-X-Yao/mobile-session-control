@@ -36,7 +36,7 @@ Android parity, iOS-specific packaging.
 
 | Claim | Evidence | Status |
 |---|---|---|
-| Offline behavior | `npm test` 201 tests, scenario suite, 89% line coverage | PASS |
+| Offline behavior | `npm test` 222 tests, scenario suite, 89% line coverage | PASS |
 | Browser client | Playwright mobile E2E: pairing, allow/deny, question, Stop, two tabs, renewal, revocation | PASS |
 | Android client | Debug APK builds/lints; ADB fake-relay smoke: pair, chat, allow, question | PASS |
 | Android real service | 2026-11-21 HTTPS/Tailscale: pair, DeepSeek provider, one real completed turn | PASS |
@@ -50,6 +50,7 @@ Android parity, iOS-specific packaging.
 | Native session resume (DeepSeek) | Real listing, pairing, session creation and same-session resume completed after `CLAUDE_CODE_INLINE_TOOLS=0`; assistant returned `NATIVE-RESUME-OK` | PASS |
 | Native fork of a live session | Active background source forked: new session ID, `NATIVE-FORK-OK`, source transcript unchanged during the turn | PASS |
 | Native session phone control | 2026-11-24 Android debug build over adb reverse: pair, select native provider, one real turn returned `NATIVE-PHONE-OK`; ADB-driven, not human hands-on | PASS |
+| Native takeover in the durable service | Fake SDK and fake `claude agents`: merged Phase 9 + native catalog, stable IDs, active fork and one fake turn | PASS (fake SDK) |
 | Backup recovery | Plaintext and encrypted restore drills | PASS |
 | Metrics | Relay metrics endpoint test | PASS |
 | CI matrix | Node 22 and 24, CodeQL, Browser E2E | PASS |

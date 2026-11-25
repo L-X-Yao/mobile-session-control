@@ -49,6 +49,33 @@ shell. Those values are visible to tool calls, as in a normal terminal. One
 relay has one provider environment: sessions created under a different provider
 are listed, but resume against the relay's endpoint.
 
+## Durable service mode
+
+The standalone script above and the durable service share the same catalog,
+label and host code. Add a `native` object to a real-mode service config:
+
+```json
+{
+  "mode": "real",
+  "phase9Config": "/absolute/private/phase9-config.json",
+  "stateFile": "/absolute/private/state.json",
+  "native": {
+    "sdkPath": "/absolute/path/@anthropic-ai/claude-agent-sdk/sdk.mjs",
+    "claudePath": "/home/<user>/.local/bin/claude",
+    "home": "/home/<user>",
+    "limit": 20,
+    "refreshMs": 30000
+  }
+}
+```
+
+Native sessions join the Phase 9 providers in one relay and one phone URL.
+IDs are stable hashes of the session ID; a background refresh adds sessions
+created after service start without rebinding open phone sessions. Active
+sessions are forked, stopped sessions resumed. See `docs/SERVICE.md` for the
+startup errors, systemd `ReadWritePaths` requirement and the single-provider
+environment boundary.
+
 ## Verification status
 
 2026-11-24: real listing, provider exposure, pairing, session creation and
@@ -74,6 +101,10 @@ control remains `NO_DATA`.
 - Native mode loads the real user settings and transcripts. It is intentionally
   not the isolated fake-host path. Use it only on a trusted host and private
   network.
+- The durable service reads the real `~/.claude`; resumed workers write session
+  transcripts there. Keep `ProtectHome=read-only` and allow-list only
+  `%h/.claude` plus the service state directory. The exact write set was not
+  measured against a real provider in offline tests.
 - There is no attach API for an arbitrary foreground `claude` process. Active
   sessions are forked, not hot-attached.
 - The phone does not preload the full native transcript; it starts a new relay

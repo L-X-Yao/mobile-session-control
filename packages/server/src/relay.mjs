@@ -323,7 +323,11 @@ export async function createRelay({
     if (webDir !== null && (typeof webDir !== 'string' || !path.isAbsolute(webDir))) {
         throw new Error('INVALID_WEB_DIR');
     }
-    const providerCatalog = normalizeProviderCatalog(providers);
+    // A function lets the durable service expose a native catalog that changes
+    // without restarting the relay. An array keeps the fixed-catalog behavior.
+    const providerSource = typeof providers === 'function' ? providers : () => providers;
+    // Validate the initial catalog before listening.
+    normalizeProviderCatalog(providerSource());
     const sessions = new Map();
     const tokens = new Map();
     const rateBuckets = new Map();
@@ -734,7 +738,9 @@ export async function createRelay({
         if (parts.length === 2 && parts[0] === 'v1' && parts[1] === 'providers'
             && req.method === 'GET') {
             if (!sendAuthError(res, tokenEntry(bearerToken(req)), ['pair', 'manager'])) return;
-            sendJson(res, 200, { providers: providerCatalog, tokenTtlMs });
+            sendJson(res, 200, {
+                providers: normalizeProviderCatalog(providerSource()), tokenTtlMs,
+            });
             return;
         }
 
@@ -1133,7 +1139,7 @@ export async function createRelay({
         get pairingCode() { return code; },
         get pairToken() { return pair; },
         managerToken: manager,
-        providerCatalog,
+        get providerCatalog() { return normalizeProviderCatalog(providerSource()); },
         sessions,
         stateFile,
         get pairingConsumed() { return pairingConsumed; },

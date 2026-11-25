@@ -4,6 +4,7 @@
 // UTF-16 code units.
 export const MAX_NATIVE_LABEL = 64;
 export const ACTIVE_FORK_SUFFIX = ' [active→fork]';
+export const TAKEOVER_PREFIX = '接管 · ';
 
 function isUnsafe(codePoint) {
     return codePoint <= 0x1f
@@ -36,7 +37,9 @@ export function nativeProviderLabel(title, project, live, max = MAX_NATIVE_LABEL
     const suffix = live ? ACTIVE_FORK_SUFFIX : '';
     const text = sanitizeLabel(title) || 'untitled';
     const location = sanitizeLabel(project);
-    const raw = location ? `${text} · ${location}` : text;
+    const raw = location
+        ? `${TAKEOVER_PREFIX}${text} · ${location}`
+        : `${TAKEOVER_PREFIX}${text}`;
     const prefix = truncateLabel(raw, Math.max(0, max - suffix.length)).trimEnd();
     return `${prefix}${suffix}`;
 }

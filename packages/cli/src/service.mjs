@@ -17,6 +17,7 @@ import {
     makeRealHostResolver,
     phase9ProviderCatalog,
 } from './session/real-host.mjs';
+import { createNativeRuntime } from './native/runtime.mjs';
 
 const FAKE_HOST = fileURLToPath(new URL('./testing/fake-session-host.mjs', import.meta.url));
 const WEB_DIR = fileURLToPath(new URL('../../../apps/web', import.meta.url));
@@ -49,6 +50,55 @@ function assertPrivateConfig(file) {
     if (typeof process.getuid === 'function' && stat.uid !== process.getuid()) {
         throw new Error('SERVICE_CONFIG_NOT_OWNED');
     }
+}
+
+function validateNativeConfig(value) {
+    if (value === undefined || value === null) return null;
+    if (typeof value !== 'object' || Array.isArray(value)) {
+        throw new Error('SERVICE_NATIVE_INVALID');
+    }
+    if (value.enabled === false) return null;
+    if (value.enabled !== undefined && typeof value.enabled !== 'boolean') {
+        throw new Error('SERVICE_NATIVE_INVALID');
+    }
+    const sdkPath = absolutePath(value.sdkPath, 'NATIVE_SDK_PATH');
+    let stat;
+    try {
+        stat = fs.statSync(sdkPath);
+    } catch {
+        throw new Error('SERVICE_NATIVE_SDK_MISSING');
+    }
+    if (!stat.isFile()) throw new Error('SERVICE_NATIVE_SDK_MISSING');
+    const home = absolutePath(value.home, 'NATIVE_HOME');
+    try {
+        stat = fs.statSync(home);
+    } catch {
+        throw new Error('SERVICE_NATIVE_HOME_INVALID');
+    }
+    if (!stat.isDirectory() || home === path.parse(home).root) {
+        throw new Error('SERVICE_NATIVE_HOME_INVALID');
+    }
+    if (typeof process.getuid === 'function' && stat.uid !== process.getuid()) {
+        throw new Error('SERVICE_NATIVE_HOME_OWNER');
+    }
+    let claudePath = null;
+    if (value.claudePath !== undefined) {
+        claudePath = absolutePath(value.claudePath, 'NATIVE_CLAUDE_PATH');
+        try {
+            stat = fs.statSync(claudePath);
+            if (!stat.isFile()) throw new Error('not a file');
+            fs.accessSync(claudePath, fs.constants.X_OK);
+        } catch {
+            throw new Error('SERVICE_NATIVE_CLAUDE_MISSING');
+        }
+    }
+    return {
+        sdkPath,
+        home,
+        claudePath,
+        limit: integerOption(value.limit, 'NATIVE_LIMIT', 1, 200) ?? 20,
+        refreshMs: integerOption(value.refreshMs, 'NATIVE_REFRESH_MS', 1000, 300000) ?? 30000,
+    };
 }
 
 function validateProvider(provider) {
@@ -149,6 +199,7 @@ export function loadServiceConfig(configPath) {
         eventLogKeep,
     };
     if (parsed.mode === 'fake') {
+        if (parsed.native !== undefined) throw new Error('SERVICE_NATIVE_REQUIRES_REAL');
         const provider = validateProvider(parsed.provider);
         const fakeHost = parsed.fakeHost === undefined
             ? FAKE_HOST : absolutePath(parsed.fakeHost, 'FAKE_HOST');
@@ -160,7 +211,8 @@ export function loadServiceConfig(configPath) {
     // configured writable root for host run directories under the unit's
     // ProtectHome=read-only sandbox.
     if (!stateFile) throw new Error('SERVICE_REAL_STATE_REQUIRED');
-    return { ...common, phase9Config };
+    const native = validateNativeConfig(parsed.native);
+    return { ...common, phase9Config, native };
 }
 
 function writePairingFile(file, relay) {
@@ -214,6 +266,7 @@ export async function runService(config) {
         throw new Error('SERVICE_PAIRING_FILE_OUTSIDE_STATE');
     }
     let fake = null;
+    let native = null;
     let providers;
     let resolveHost;
     if (config.mode === 'fake') {
@@ -241,6 +294,35 @@ export async function runService(config) {
                 keep: config.eventLogKeep,
             }),
         });
+        if (config.native) {
+            // listSessions reads the SDK's real HOME. Refuse a config whose
+            // native home differs from the process HOME rather than list the
+            // wrong session store.
+            if (path.resolve(process.env.HOME || '') !== path.resolve(config.native.home)) {
+                throw new Error('SERVICE_NATIVE_HOME_MISMATCH');
+            }
+            const registryFile = path.join(writableRoot, 'native-registry.json');
+            native = await createNativeRuntime({
+                ...config.native,
+                registryFile,
+                log: (message) => log(`native: ${message}`),
+            });
+            const baseProviders = providers;
+            const baseIds = new Set(baseProviders.map((provider) => provider.id));
+            for (const provider of native.providers()) {
+                if (baseIds.has(provider.id)) {
+                    native.close();
+                    throw new Error('SERVICE_PROVIDER_COLLISION');
+                }
+            }
+            const baseResolveHost = resolveHost;
+            providers = () => [
+                ...baseProviders,
+                ...native.providers().filter((provider) => !baseIds.has(provider.id)),
+            ];
+            resolveHost = async (args) => (await native.resolveHost(args))
+                ?? baseResolveHost(args);
+        }
     }
     let relay = null;
     let manager = null;
@@ -270,7 +352,7 @@ export async function runService(config) {
             onLog: (message) => log(`manager: ${message}`),
         });
         writePairingFile(config.pairingFile, relay);
-        log(`service ready on ${relay.url} (${config.mode} providers)`);
+        log(`service ready on ${relay.url} (${config.mode}${native ? '+native' : ''} providers)`);
         if (config.pairingFile) log(`pairing file: ${config.pairingFile}`);
         await new Promise((resolve) => {
             const done = () => resolve();
@@ -291,6 +373,7 @@ export async function runService(config) {
                 await new Promise((resolve) => setTimeout(resolve, 500));
             }
         }
+        if (native) native.close();
         if (relay) await relay.close();
         // Keep the fake run base when a host failed to stop, for diagnosis.
         if (fake && stopResult?.status === 'stopped') {
