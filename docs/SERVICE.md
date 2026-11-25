@@ -160,11 +160,12 @@ analogous to the Phase 9 wrapper key files.
 
 The service process reads the real `~/.claude`; the worker writes resumed
 transcripts there. Under the systemd template, keep `ProtectHome=read-only` and
-add `ReadWritePaths=%h/.claude %h/.claude.json` (plus the state directory).
+add `ReadWritePaths=%h/.claude -%h/.claude.json` (plus the state directory).
 `claude agents --json` was observed creating `~/.claude.json` and
-`~/.claude/backups` before any turn; temp siblings and the exact write set were
-not measured against a real provider in offline tests. Verify them before
-enabling native mode in production.
+`~/.claude/backups` before any turn, using a temporary sibling in the HOME root
+before rename. The sibling still needs a writable parent; temp paths and the
+exact write set were not measured in a systemd sandbox. Verify them in M3, or
+use a dedicated writable config directory.
 
 `ProtectSystem=strict` also makes the repository read-only to the service.
 Native tools that edit project files will fail under the current unit. Real
@@ -172,10 +173,12 @@ native takeover therefore needs a reviewed unit change (extra writable project
 roots, or a separate native unit with a less strict filesystem policy); offline
 code does not resolve this.
 
-Rollback: stop the service, remove the `native` block from `service.json`,
-restart and confirm the Phase 9 providers still load. Native transcripts and
-the `native-registry.json` file are untouched; remove the registry only if you
-also intend to discard native provider ID resolution.
+Rollback: stop the service, remove the `native` block from `service.json`, and
+remove the native-only `ReadWritePaths` entries (`%h/.claude` and
+`-%h/.claude.json`) from the unit. Restart and confirm the Phase 9 providers
+still load. Native transcripts and the `native-registry.json` file are
+untouched; remove the registry only if you also intend to discard native
+provider ID resolution.
 
 ## systemd user unit
 

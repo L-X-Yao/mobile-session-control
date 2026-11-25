@@ -98,7 +98,7 @@ function waitExit(child, timeoutMs = 15_000) {
     if (child.exitCode !== null) return Promise.resolve(child.exitCode);
     return new Promise((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error('exit timeout')), timeoutMs);
-        child.once('exit', (code) => {
+        child.once('close', (code) => {
             clearTimeout(timer);
             resolve(code);
         });

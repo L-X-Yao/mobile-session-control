@@ -13,6 +13,7 @@ import {
 test('sanitizes the whole Unicode C category', () => {
     const unsafe = [
         0x202e, 0x200b, 0xfeff, 0x061c, 0x206a, 0x00ad, 0xfff9, 0xe0001,
+        0x034f, 0x115f, 0x3164, 0xfe0f, 0xffa0,
     ].map((codePoint) => String.fromCodePoint(codePoint));
     assert.equal(
         sanitizeLabel(`  a\u0000b${unsafe.join('')}c  `),

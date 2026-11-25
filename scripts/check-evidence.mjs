@@ -94,6 +94,11 @@ function fieldValue(text, field) {
         // `| Authorization | TBD |` look present.
         if (line.trim().startsWith('|')) continue;
         if (heading.test(line)) {
+            const colon = line.indexOf(':');
+            if (colon >= 0) {
+                const inline = line.slice(colon + 1).trim();
+                if (inline) return placeholder(inline) ? null : inline;
+            }
             for (let next = index + 1; next < Math.min(lines.length, index + 4); next += 1) {
                 const candidate = lines[next].trim();
                 if (!candidate || candidate.startsWith('#') || candidate.startsWith('|')) continue;
@@ -124,9 +129,15 @@ function fieldValue(text, field) {
 }
 
 function placeholder(value) {
-    return value.length === 0
-        || /^(tbd|todo|n\/?a|none|pending|unknown)\b/i.test(value)
-        || /^[-.…]+$/.test(value);
+    const normalized = value.trim()
+        .replace(/^[`"'([{<（【「『-]+/, '')
+        .replace(/[`"')\]}）】」』.,;:!?，。；：！？、]+$/, '')
+        .trim();
+    if (normalized.length === 0) return true;
+    const lower = normalized.toLowerCase();
+    return /^(tbd|tbc|todo|n\/?a|none|pending|unknown|no_data|待定|待核|to be confirmed)(?:\b|$)/.test(lower)
+        || /^(see above|see below|as above|同上|见上)/.test(lower)
+        || /^[-.…]+$/.test(normalized);
 }
 
 const packs = manifests(LOCAL);

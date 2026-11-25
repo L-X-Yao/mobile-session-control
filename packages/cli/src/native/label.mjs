@@ -8,7 +8,9 @@ export const TAKEOVER_PREFIX = '接管 · ';
 
 // Unicode category C covers controls, format characters (bidi, zero-width,
 // soft hyphen, interlinear annotation), private use and unassigned code points.
-const UNSAFE = /\p{C}/gu;
+// The explicit list adds invisible combining/filler/selector characters that
+// are not category C but can hide text in a phone label.
+const UNSAFE = /[\p{C}\u034F\u115F\u1160\u3164\uFE0F\uFFA0]/gu;
 
 export function sanitizeLabel(value) {
     return String(value ?? '')

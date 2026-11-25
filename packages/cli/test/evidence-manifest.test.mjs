@@ -83,8 +83,17 @@ test('placeholder or unstructured fields fail', () => {
     const variants = [
         'Authorization: TBD: waiting',
         'Authorization: TBD (not approved)',
+        'Authorization: -TBD',
+        'Authorization: (TBD)',
+        'Authorization: `TBD`',
+        'Authorization: NO_DATA',
+        'Authorization: 待定',
+        'Authorization: to be confirmed…',
+        '- Authorization was given in chat on 2026-11-24',
         'Authorization was approved in chat',
         '| Authorization | TBD |',
+        '### Authorization: TBD',
+        '## Authorization\n\nSee above.',
     ];
     for (const authorization of variants) {
         const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'msc-evidence-'));

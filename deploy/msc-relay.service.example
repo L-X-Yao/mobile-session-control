@@ -14,10 +14,12 @@
 # With the optional native section, the relay also needs write access to the
 # real Claude session store for resumed transcripts. Keep ProtectHome=read-only
 # and add only the observed paths, for example:
-#   ReadWritePaths=@STATE_DIR@ %h/.claude %h/.claude.json
-# `claude agents --json` was observed creating ~/.claude.json and
-# ~/.claude/backups even without a turn; verify temp siblings and the exact
-# write set on a real session before enabling it.
+#   ReadWritePaths=@STATE_DIR@ %h/.claude -%h/.claude.json
+# The `-` allows the file to be absent. `claude agents --json` was observed
+# creating ~/.claude.json and ~/.claude/backups even without a turn, using a
+# temporary sibling in the HOME root before rename. That sibling still needs a
+# writable parent; verify the exact write set in the M3 sandbox, or use a
+# dedicated writable config directory.
 #
 # ProtectSystem=strict makes the repository read-only to the service. Native
 # Claude tools that edit project files will fail under this unit; a reviewed
