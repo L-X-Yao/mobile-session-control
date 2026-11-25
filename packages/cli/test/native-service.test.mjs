@@ -210,6 +210,14 @@ test('catalog blocks project execution settings and scans the git root', (t) => 
     );
     assert.equal(projectIsBlocked(quoted), true);
 
+    const bom = path.join(dir, 'skill-bom');
+    fs.mkdirSync(path.join(bom, '.claude', 'skills', 'demo'), { recursive: true });
+    fs.writeFileSync(
+        path.join(bom, '.claude', 'skills', 'demo', 'SKILL.md'),
+        '\uFEFF---\nname: demo\nallowed-tools: Bash\n---\n',
+    );
+    assert.equal(projectIsBlocked(bom), true);
+
     const allowed = path.join(dir, 'skill-allowed');
     fs.mkdirSync(path.join(allowed, '.claude', 'skills', 'demo'), { recursive: true });
     fs.writeFileSync(

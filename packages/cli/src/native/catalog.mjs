@@ -61,7 +61,7 @@ function skillIsBlocked(file) {
     } catch (error) {
         return error.code !== 'ENOENT';
     }
-    const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
+    const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text.replace(/^\uFEFF/, ''));
     if (!match) return false;
     return /^\s*["']?(hooks|allowed-tools)["']?\s*:/m.test(match[1]);
 }
