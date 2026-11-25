@@ -20,6 +20,7 @@ const CHECK_EVIDENCE = path.join(ROOT, 'scripts/check-evidence.mjs');
 const FAKE_SDK = path.join(HERE, 'fixtures/fake-agent-sdk.mjs');
 const SESSION_ID = '11111111-2222-4333-8444-555555555555';
 const ACTIVE = `[{"sessionId":"${SESSION_ID}"}]`;
+const FORK_MARK = ` [active${String.fromCodePoint(0x2192)}fork]`;
 const NATIVE_ID = `native-${
     crypto.createHash('sha256').update(SESSION_ID).digest('hex').slice(0, 12)}`;
 
@@ -152,7 +153,7 @@ test('a session that became active after the last refresh is forked at launch', 
     t.after(() => runtime.close());
     const [provider] = runtime.providers();
     assert.ok(provider);
-    assert.ok(!provider.label.includes('[active→fork]'));
+    assert.ok(!provider.label.includes(FORK_MARK));
     fs.writeFileSync(flag, '');
     const host = await runtime.resolveHost({ session: { provider: { id: provider.id } } });
     assert.ok(host);
@@ -280,7 +281,7 @@ test('an idle native session is resumed in place, not forked', async (t) => {
     const listed = await request(`${base}/v1/providers`, { token });
     const [provider] = listed.body.providers;
     assert.ok(provider);
-    assert.ok(!provider.label.includes('[active→fork]'));
+    assert.ok(!provider.label.includes(FORK_MARK));
     const created = await request(`${base}/v1/sessions`, {
         token,
         method: 'POST',
@@ -308,12 +309,14 @@ test('an idle native session is resumed in place, not forked', async (t) => {
 
 // Gap: label-c1-kept, label-2060-kept.
 test('label sanitization removes C1, isolate and deprecated format characters', () => {
-    assert.equal(sanitizeLabel('a\u0085b\u2066c\u206Ad'), 'a b c d');
+    assert.equal(sanitizeLabel(`a${String.fromCodePoint(0x85)}b${String.fromCodePoint(0x2066)}c`
+        + `${String.fromCodePoint(0x206a)}d`), 'a b c d');
 });
 
 // Defect on f161eff: U+061C (a bidi control) and tag characters are kept.
 test('label sanitization removes the Arabic letter mark and tag characters', () => {
-    assert.equal(sanitizeLabel('a\u061Cb\u{E0041}c'), 'a b c');
+    assert.equal(sanitizeLabel(`a${String.fromCodePoint(0x61c)}b`
+        + `${String.fromCodePoint(0xe0041)}c`), 'a b c');
 });
 
 // Defect on f161eff: each of these manifests carries no value but passes.

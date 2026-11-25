@@ -35,7 +35,7 @@ inside the config are rejected. Required and optional fields:
 | `eventLog` | real only | Absolute JSONL host-event log, created mode 0600 |
 | `eventLogMaxBytes` | no | Rotate the event log at this size, 0-1000000000 (`0` disables), default 10 MiB |
 | `eventLogKeep` | no | Rotated archives kept as `<file>.1..N`, 0-10 (`0` truncates), default 2 |
-| `tokenTtlMs` | no | Device/session token lifetime; `0` disables expiry, default `0`. The internal manager token does not expire |
+| `tokenTtlMs` | no | Device/session/worker token lifetime; `0` disables expiry, default `0`. The manager token does not expire. Worker tokens have no renewal path, so a non-zero TTL ends long-running hosts |
 | `rateLimit` | no | Requests per token/address per window; `0` disables, default `0` |
 | `rateLimitWindowMs` | no | Rate-limit window, default 1000 |
 | `maxClosedSessions` | no | Retained closed sessions, 0-1000, default 100 |
