@@ -67,10 +67,14 @@ export async function createNativeRuntime({
     }
     const sdk = await loadNativeSdk(sdkPath);
     const configDir = path.join(home, '.claude');
-    fs.mkdirSync(configDir, { recursive: true, mode: 0o700 });
-    // Keep HOME writable and temporary so `claude agents` can create its
-    // global .claude.json temp sibling, while the real session store stays in
-    // the read-write .claude config dir. This avoids a writable HOME root.
+    try {
+        fs.mkdirSync(configDir, { recursive: true, mode: 0o700 });
+    } catch {
+        throw new Error('SERVICE_NATIVE_CONFIG_DIR_INVALID');
+    }
+    // Keep HOME writable and temporary so HOME-level writes never touch the
+    // real home. The observed .claude.json lands in CLAUDE_CONFIG_DIR, which
+    // remains the real read-write session store.
     const runtimeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'msc-native-home-'));
     fs.chmodSync(runtimeHome, 0o700);
     const nativeEnv = {

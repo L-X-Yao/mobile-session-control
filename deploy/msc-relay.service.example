@@ -14,11 +14,11 @@
 # With the optional native section, the relay also needs write access to the
 # real Claude session store for resumed transcripts. Keep ProtectHome=read-only
 # and add the session store plus the project roots native tools may edit:
-#   ReadWritePaths=@STATE_DIR@ %h/.claude %h/project /mnt/d/lsc
+#   ReadWritePaths=@STATE_DIR@ %h/.claude @PROJECT_ROOT@
 # Native workers run with a private temporary HOME and
-# CLAUDE_CONFIG_DIR=%h/.claude, so `claude agents` can create its .claude.json
-# temp sibling under /tmp without a writable HOME root. Verify the exact write
-# set in a real sandbox before enabling it.
+# CLAUDE_CONFIG_DIR=%h/.claude. The observed .claude.json is written inside
+# that config dir, not the HOME root; the temporary HOME isolates other HOME
+# writes. Verify the exact write set in a real sandbox before enabling it.
 #
 # ProtectSystem=strict makes the repository read-only to the service. Native
 # Claude tools that edit project files will fail under this unit; a reviewed

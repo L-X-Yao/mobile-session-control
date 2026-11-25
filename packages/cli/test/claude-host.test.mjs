@@ -81,7 +81,7 @@ test('claude host passes native resume, persistence and fork options', async (t)
     const message = events.find((event) => event.type === 'assistant-message');
     assert.equal(
         message.content,
-        'FAKE-SDK-NATIVE:11111111-2222-4333-8444-555555555555:persist:default-sources:fork',
+        'FAKE-SDK-NATIVE:11111111-2222-4333-8444-555555555555:persist:default-sources:strict-mcp:fork',
     );
 });
 
@@ -104,7 +104,7 @@ test('claude host resumes without forking when CLAUDE_FORK_SESSION is absent', a
     const message = events.find((event) => event.type === 'assistant-message');
     assert.equal(
         message.content,
-        'FAKE-SDK-NATIVE:11111111-2222-4333-8444-555555555555:persist:default-sources:same',
+        'FAKE-SDK-NATIVE:11111111-2222-4333-8444-555555555555:persist:default-sources:strict-mcp:same',
     );
 });
 
@@ -121,7 +121,7 @@ test('claude host keeps the isolated SDK boundary without native mode', async (t
     host.sendUserMessage('nativeinfo');
     await waitFor(() => events.some((event) => event.type === 'turn-end'));
     const message = events.find((event) => event.type === 'assistant-message');
-    assert.equal(message.content, 'FAKE-SDK-NATIVE::ephemeral::same');
+    assert.equal(message.content, 'FAKE-SDK-NATIVE::ephemeral::mcp-default:same');
 });
 
 test('claude host completes a turn through the Agent SDK bridge', async (t) => {

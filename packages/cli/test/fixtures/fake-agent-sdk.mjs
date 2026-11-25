@@ -83,6 +83,7 @@ export function query({ prompt, options = {} }) {
                     options.persistSession === true ? 'persist' : 'ephemeral',
                     Array.isArray(options.settingSources)
                         ? options.settingSources.join(',') : 'default-sources',
+                    options.strictMcpConfig === true ? 'strict-mcp' : 'mcp-default',
                     options.forkSession === true ? 'fork' : 'same',
                 ].join(':');
                 yield { type: 'assistant', message: { content: [{ type: 'text', text }] } };

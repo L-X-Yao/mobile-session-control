@@ -206,6 +206,43 @@ test('native runtime uses a private HOME and the real config dir', async (t) => 
     assert.match(host.env.HOME, /msc-native-home-/);
 });
 
+test('the private HOME is owner-only and removed when the runtime closes', async (t) => {
+    const dir = tempDir(t);
+    const home = path.join(dir, 'home');
+    fs.mkdirSync(home, { mode: 0o700 });
+    const runtime = await createNativeRuntime({
+        sdkPath: FAKE_SDK,
+        claudePath: agentsScript(dir, 'echo "[]"'),
+        home,
+        limit: 1,
+        refreshMs: 60_000,
+    });
+    const [provider] = runtime.providers();
+    const host = await runtime.resolveHost({ session: { provider: { id: provider.id } } });
+    const privateHome = host.env.HOME;
+    assert.notEqual(privateHome, home);
+    assert.equal(fs.statSync(privateHome).mode & 0o777, 0o700);
+    runtime.close();
+    assert.equal(fs.existsSync(privateHome), false);
+});
+
+test('a failed startup leaves no private HOME behind', async (t) => {
+    const before = fs.readdirSync(os.tmpdir()).filter((name) => name.startsWith('msc-native-home-'));
+    const dir = tempDir(t);
+    const home = path.join(dir, 'home');
+    fs.mkdirSync(home, { mode: 0o700 });
+    await assert.rejects(createNativeRuntime({
+        sdkPath: FAKE_SDK,
+        claudePath: agentsScript(dir, 'exit 3'),
+        home,
+        limit: 1,
+        refreshMs: 60_000,
+    }), /SERVICE_NATIVE_ACTIVE_LIST_FAILED/);
+    assert.deepEqual(
+        fs.readdirSync(os.tmpdir()).filter((name) => name.startsWith('msc-native-home-')), before,
+    );
+});
+
 test('runtime exposes a native provider and forks an active session', async (t) => {
     const dir = tempDir(t);
     const home = path.join(dir, 'home');

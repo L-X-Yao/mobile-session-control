@@ -158,14 +158,25 @@ provider environment. Put provider credentials in a mode-0600
 `EnvironmentFile=` referenced by the unit; there is no native key-file setting
 analogous to the Phase 9 wrapper key files.
 
+Native workers set `strictMcpConfig: true`: project, user, plugin and connector
+MCP servers are not connected, so a repository `.mcp.json` cannot start a
+command outside the phone approval gate. Project `CLAUDE.md` still loads. MCP in
+native sessions would need a separate reviewed opt-in.
+
+The worker `HOME` is a fresh temporary directory shared by the workers of one
+service. Project trust state is therefore not inherited from the terminal's
+`~/.claude.json`; project `permissions.allow`/`additionalDirectories` may not
+apply, while hooks from settings files can still run. This differs from a
+normal terminal session and is not yet exercised on a real provider turn.
+
 The service process reads the real `~/.claude`; the worker writes resumed
 transcripts there. Native workers run with a private temporary `HOME` and
-`CLAUDE_CONFIG_DIR=%h/.claude`, so `claude agents` can create its `.claude.json`
-temp sibling under `/tmp` without a writable HOME root. Under the systemd
-template, keep `ProtectHome=read-only` and add `ReadWritePaths=%h/.claude`
-plus each project root native tools may edit (plus the state directory). The
-exact write set was not measured in a systemd sandbox; verify it before
-enabling native mode.
+`CLAUDE_CONFIG_DIR=%h/.claude`. The observed `.claude.json` is written inside
+that config dir, not the HOME root; the temporary HOME isolates other HOME
+writes. Under the systemd template, keep `ProtectHome=read-only` and add
+`ReadWritePaths=%h/.claude` plus each project root native tools may edit (plus
+the state directory). The exact write set was not measured in a systemd
+sandbox; verify it before enabling native mode.
 
 `ProtectSystem=strict` also makes the repository read-only to the service.
 Native tools that edit project files will fail unless their roots are in
@@ -266,6 +277,7 @@ one of:
 | `SERVICE_NATIVE_SDK_PATH_INVALID` / `_CLAUDE_PATH_INVALID` | Native path is missing, relative or not a string |
 | `SERVICE_NATIVE_SDK_MISSING` | Native `sdkPath` is absent or not a file |
 | `SERVICE_NATIVE_SDK_INVALID` / `_LOAD_FAILED` | Loaded SDK has no `listSessions()` or failed to import |
+| `SERVICE_NATIVE_CONFIG_DIR_INVALID` | `~/.claude` cannot be created or is not writable |
 | `SERVICE_NATIVE_HOME_INVALID` / `_OWNER` / `_MISMATCH` | Native home is not an owned directory, is `/`, or differs from the process HOME |
 | `SERVICE_NATIVE_CLAUDE_MISSING` | Native `claudePath` is absent or not executable |
 | `SERVICE_NATIVE_ACTIVE_LIST_FAILED` | `claude agents --json` failed at startup |

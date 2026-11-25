@@ -302,7 +302,7 @@ test('an idle native session is resumed in place, not forked', async (t) => {
             `${base}/v1/sessions/${sessionId}/events?after=0`, { token: clientToken },
         );
         return events.body?.events?.some((event) => event.content
-            === `FAKE-SDK-NATIVE:${SESSION_ID}:persist:default-sources:same`);
+            === `FAKE-SDK-NATIVE:${SESSION_ID}:persist:default-sources:strict-mcp:same`);
     });
     child.kill('SIGTERM');
 });

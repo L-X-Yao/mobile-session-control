@@ -107,6 +107,9 @@ control remains `NO_DATA`.
   `ProtectHome=read-only` and allow-list `%h/.claude` plus each project root
   native tools may edit. The exact write set was not measured in a real
   sandbox.
+- Native workers set `strictMcpConfig: true`; project `.mcp.json` and other MCP
+  sources are not connected. Project `CLAUDE.md` still loads. Project trust and
+  `permissions.allow` are not inherited from the terminal's `~/.claude.json`.
 - The example unit uses `ProtectSystem=strict`, so project directories are
   read-only unless listed. Real file-editing takeover needs the reviewed unit
   change; see `docs/SERVICE.md`.
