@@ -1,6 +1,10 @@
 package dev.lxyao.msc
 
 import java.io.IOException
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -94,6 +98,36 @@ class TokenRefreshTest {
         val keeper = TokenKeeper("https://relay", store, client) { 700 }
 
         assertEquals("old", keeper.deviceToken())
+    }
+
+    @Test
+    fun renewalIsSingleFlightAcrossKeepers() {
+        val store = FakeStore(TokenStamp("old", 0, 1_000))
+        val calls = AtomicInteger()
+        val started = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val client = object : TokenRenewalClient {
+            override fun renew(baseUrl: String, token: String): IssuedToken {
+                calls.incrementAndGet()
+                started.countDown()
+                release.await(1, TimeUnit.SECONDS)
+                return IssuedToken("new", 2_000)
+            }
+        }
+        val first = TokenKeeper("https://relay", store, client) { 700 }
+        val second = TokenKeeper("https://relay", store, client) { 700 }
+        val pool = Executors.newFixedThreadPool(2)
+        try {
+            val one = pool.submit<String?> { first.deviceToken() }
+            assertTrue(started.await(1, TimeUnit.SECONDS))
+            val two = pool.submit<String?> { second.deviceToken() }
+            release.countDown()
+            assertEquals("new", one.get(2, TimeUnit.SECONDS))
+            assertEquals("new", two.get(2, TimeUnit.SECONDS))
+            assertEquals(1, calls.get())
+        } finally {
+            pool.shutdownNow()
+        }
     }
 
     @Test

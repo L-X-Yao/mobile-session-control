@@ -86,30 +86,47 @@ function manifests(dir, depth = 0) {
 
 function fieldValue(text, field) {
     const lines = text.split(/\r?\n/);
-    const matcher = new RegExp(`\\b${field}\\b`, 'i');
+    const label = new RegExp(`\\b${field}\\b\\s*:`, 'i');
+    const heading = new RegExp(`^\\s*#{1,6}\\s*${field}\\b`, 'i');
     for (let index = 0; index < lines.length; index += 1) {
-        if (!matcher.test(lines[index])) continue;
         const line = lines[index];
-        const colon = line.indexOf(':');
-        if (colon >= 0) {
+        // A table cell is not a structured manifest field; accepting it made
+        // `| Authorization | TBD |` look present.
+        if (line.trim().startsWith('|')) continue;
+        if (heading.test(line)) {
+            for (let next = index + 1; next < Math.min(lines.length, index + 4); next += 1) {
+                const candidate = lines[next].trim();
+                if (!candidate || candidate.startsWith('#') || candidate.startsWith('|')) continue;
+                const value = candidate.replace(/^[-*]\s*/, '').trim();
+                return placeholder(value) ? null : value;
+            }
+            return null;
+        }
+        if (label.test(line)) {
+            const colon = line.indexOf(':');
             const value = line.slice(colon + 1).trim();
             return placeholder(value) ? null : value;
         }
-        // A heading or label without an inline value owns the next
-        // non-empty, non-heading line.
-        for (let next = index + 1; next < Math.min(lines.length, index + 4); next += 1) {
-            const candidate = lines[next].trim();
-            if (!candidate || candidate.startsWith('#')) continue;
-            const value = candidate.replace(/^[-*]\s*/, '').trim();
-            return placeholder(value) ? null : value;
+        // Existing binding manifests may write `- Repository HEAD <hash>`
+        // without a colon. Accept that bullet form for HEAD/Window, but never
+        // for Authorization, where prose was the bypass under test.
+        if (field !== 'Authorization') {
+            const bullet = new RegExp(`^\\s*[-*]\\s+.*\\b${field}\\b\\s*(.*)$`, 'i');
+            const match = bullet.exec(line);
+            if (match) {
+                const value = match[1].replace(/^[:\s]+/, '').trim();
+                return placeholder(value) ? null : value;
+            }
         }
-        return null;
+        continue;
     }
     return null;
 }
 
 function placeholder(value) {
-    return value.length === 0 || /^(tbd|todo|n\/?a|none|-|\.\.\.)$/i.test(value);
+    return value.length === 0
+        || /^(tbd|todo|n\/?a|none|pending|unknown)\b/i.test(value)
+        || /^[-.…]+$/.test(value);
 }
 
 const packs = manifests(LOCAL);

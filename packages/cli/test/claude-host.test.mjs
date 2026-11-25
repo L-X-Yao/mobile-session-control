@@ -85,6 +85,29 @@ test('claude host passes native resume, persistence and fork options', async (t)
     );
 });
 
+test('claude host resumes without forking when CLAUDE_FORK_SESSION is absent', async (t) => {
+    const events = [];
+    const host = createClaudeHost({
+        sdkPath: FAKE_SDK,
+        env: {
+            ...ENV,
+            CLAUDE_NATIVE: '1',
+            CLAUDE_RESUME_SESSION_ID: '11111111-2222-4333-8444-555555555555',
+        },
+        cwd: process.cwd(),
+        onEvent: (event) => events.push(event),
+    });
+    t.after(() => host.close());
+    await host.start();
+    host.sendUserMessage('nativeinfo');
+    await waitFor(() => events.some((event) => event.type === 'turn-end'));
+    const message = events.find((event) => event.type === 'assistant-message');
+    assert.equal(
+        message.content,
+        'FAKE-SDK-NATIVE:11111111-2222-4333-8444-555555555555:persist:default-sources:same',
+    );
+});
+
 test('claude host keeps the isolated SDK boundary without native mode', async (t) => {
     const events = [];
     const host = createClaudeHost({

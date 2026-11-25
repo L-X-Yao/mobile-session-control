@@ -173,6 +173,8 @@ async function main() {
             });
             const initial = await page1.$eval('#provider', (select) => select.value);
             if (initial !== '') throw new Error(`provider auto-selected: ${initial}`);
+            const disabled = await page1.$eval('#create-form button', (button) => button.disabled);
+            if (!disabled) throw new Error('create button enabled without a provider');
             await page1.selectOption('#provider', 'fake');
             await page1.waitForSelector('#create-form button:not([disabled])', { timeout: TIMEOUT });
             await page1.click('#create-form button');

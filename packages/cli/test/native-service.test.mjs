@@ -3,6 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -34,6 +35,74 @@ function agentsScript(dir, body) {
     const file = path.join(dir, 'agents.sh');
     fs.writeFileSync(file, `#!/bin/sh\n${body}\n`, { mode: 0o700 });
     return file;
+}
+
+function writeNativeServiceFixture(dir, { profileId = 'base' } = {}) {
+    const stateDir = path.join(dir, 'state');
+    const baseDir = path.join(stateDir, 'runs');
+    const home = path.join(dir, 'home');
+    for (const folder of [stateDir, baseDir, home]) fs.mkdirSync(folder, { mode: 0o700 });
+    const wrapper = path.join(dir, 'wrapper');
+    fs.writeFileSync(wrapper, '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+    const keyFile = path.join(dir, 'key');
+    fs.writeFileSync(keyFile, 'not-a-real-key\n', { mode: 0o600 });
+    const phase9 = path.join(dir, 'phase9.json');
+    writeJson(phase9, {
+        sdkPath: FAKE_SDK,
+        baseDir,
+        profiles: [{
+            id: profileId,
+            label: 'Base',
+            model: 'm1-demo',
+            effort: 'low',
+            transport: 'anthropic-compatible-sse',
+            wrapper,
+            keyFile,
+        }],
+    });
+    const agents = agentsScript(dir, `echo '[{"sessionId":"${SESSION_ID}","state":"blocked"}]'`);
+    const config = path.join(dir, 'service.json');
+    writeJson(config, {
+        mode: 'real',
+        host: '127.0.0.1',
+        port: 0,
+        pollMs: 50,
+        phase9Config: phase9,
+        stateFile: path.join(stateDir, 'state.json'),
+        pairingFile: path.join(stateDir, 'pairing.json'),
+        native: {
+            sdkPath: FAKE_SDK,
+            home,
+            claudePath: agents,
+            limit: 1,
+            refreshMs: 1000,
+        },
+    });
+    return { config, home };
+}
+
+function spawnService(config, home) {
+    const child = spawn(process.execPath, [SERVICE, config], {
+        env: { PATH: process.env.PATH || '/usr/bin:/bin', HOME: home },
+        stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let output = '';
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+    child.stdout.on('data', (chunk) => { output += chunk; });
+    child.stderr.on('data', (chunk) => { output += chunk; });
+    return { child, output: () => output };
+}
+
+function waitExit(child, timeoutMs = 15_000) {
+    if (child.exitCode !== null) return Promise.resolve(child.exitCode);
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('exit timeout')), timeoutMs);
+        child.once('exit', (code) => {
+            clearTimeout(timer);
+            resolve(code);
+        });
+    });
 }
 
 test('catalog uses stable ids, active markers and skips missing cwd', (t) => {
@@ -71,6 +140,44 @@ test('active listing fails closed on a non-zero or malformed command', (t) => {
     assert.equal(readActiveSessions(bad).ok, false);
     const failed = agentsScript(dir, 'exit 3');
     assert.equal(readActiveSessions(failed).ok, false);
+});
+
+test('runtime refuses startup when the active list fails', async (t) => {
+    const dir = tempDir(t);
+    const home = path.join(dir, 'home');
+    fs.mkdirSync(home, { mode: 0o700 });
+    const agents = agentsScript(dir, 'exit 3');
+    await assert.rejects(
+        createNativeRuntime({
+            sdkPath: FAKE_SDK,
+            claudePath: agents,
+            home,
+            limit: 1,
+            refreshMs: 60_000,
+        }),
+        /SERVICE_NATIVE_ACTIVE_LIST_FAILED/,
+    );
+});
+
+test('resolveHost rechecks the live list at launch', async (t) => {
+    const dir = tempDir(t);
+    const home = path.join(dir, 'home');
+    fs.mkdirSync(home, { mode: 0o700 });
+    const agents = agentsScript(dir, 'echo "[]"');
+    const runtime = await createNativeRuntime({
+        sdkPath: FAKE_SDK,
+        claudePath: agents,
+        home,
+        limit: 1,
+        refreshMs: 60_000,
+    });
+    t.after(() => runtime.close());
+    const id = runtime.providers()[0].id;
+    const idle = await runtime.resolveHost({ session: { provider: { id } } });
+    assert.equal(idle.env.CLAUDE_FORK_SESSION, undefined);
+    agentsScript(dir, `echo '[{"sessionId":"${SESSION_ID}","state":"blocked"}]'`);
+    const active = await runtime.resolveHost({ session: { provider: { id } } });
+    assert.equal(active.env.CLAUDE_FORK_SESSION, '1');
 });
 
 test('runtime exposes a native provider and forks an active session', async (t) => {
@@ -260,6 +367,7 @@ test('the registry keeps an old provider id resolvable after restart', async (t)
     );
     first.close();
     assert.ok(fs.existsSync(registryFile));
+    assert.equal(fs.statSync(registryFile).mode & 0o777, 0o600);
 
     const idleAgents = agentsScript(dir, 'echo "[]"');
     const second = await createNativeRuntime({
@@ -275,6 +383,34 @@ test('the registry keeps an old provider id resolvable after restart', async (t)
     assert.ok(host);
     assert.equal(host.env.CLAUDE_FORK_SESSION, undefined);
     assert.equal(host.env.CLAUDE_RESUME_SESSION_ID, SESSION_ID);
+});
+
+test('service rejects a native home that differs from its process HOME', async (t) => {
+    const dir = tempDir(t);
+    const other = path.join(dir, 'other-home');
+    fs.mkdirSync(other, { mode: 0o700 });
+    const { config } = writeNativeServiceFixture(dir);
+    const { child, output } = spawnService(config, other);
+    t.after(() => {
+        if (child.exitCode === null) child.kill('SIGKILL');
+    });
+    const code = await waitExit(child);
+    assert.notEqual(code, 0);
+    assert.match(output(), /SERVICE_NATIVE_HOME_MISMATCH/);
+});
+
+test('service rejects a native provider id collision', async (t) => {
+    const dir = tempDir(t);
+    const collision = `native-${crypto.createHash('sha256')
+        .update(SESSION_ID).digest('hex').slice(0, 12)}`;
+    const { config, home } = writeNativeServiceFixture(dir, { profileId: collision });
+    const { child, output } = spawnService(config, home);
+    t.after(() => {
+        if (child.exitCode === null) child.kill('SIGKILL');
+    });
+    const code = await waitExit(child);
+    assert.notEqual(code, 0);
+    assert.match(output(), /SERVICE_PROVIDER_COLLISION/);
 });
 
 test('native config requires real mode and an existing SDK', (t) => {

@@ -79,6 +79,34 @@ test('an empty manifest field value fails', () => {
     }
 });
 
+test('placeholder or unstructured fields fail', () => {
+    const variants = [
+        'Authorization: TBD: waiting',
+        'Authorization: TBD (not approved)',
+        'Authorization was approved in chat',
+        '| Authorization | TBD |',
+    ];
+    for (const authorization of variants) {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'msc-evidence-'));
+        try {
+            writePack(path.join(dir, 'pack-a'), {
+                manifest: [
+                    '# Test pack',
+                    authorization,
+                    'HEAD: abc1234',
+                    'Window: 2026-11-25',
+                    '',
+                ].join('\n'),
+            });
+            const result = run(['--local', dir, '--require', 'pack-a']);
+            assert.equal(result.status, 1, authorization);
+            assert.match(result.stderr, /no value for Authorization/, authorization);
+        } finally {
+            fs.rmSync(dir, { recursive: true, force: true });
+        }
+    }
+});
+
 test('a required pack name may not escape .local', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'msc-evidence-'));
     try {

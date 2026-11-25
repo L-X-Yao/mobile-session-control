@@ -145,20 +145,37 @@ background; a newly created terminal session appears without a service restart.
 An active session is always forked; a stopped session is resumed in place. A
 mode-0600 `native-registry.json` beside the state file maps IDs to session IDs
 so an open relay session still resolves after a service restart, even when the
-native session is outside the recent list. Keep the state directory private.
+native session is outside the recent list. It grows as sessions are seen; it is
+small, but deleting it resets old ID resolution. Keep the state directory
+private.
 
 If `claude agents --json` fails at startup, the service refuses to start: it
 cannot prove which sessions are live. A later refresh failure keeps the last
 catalog and stops accepting new native hosts after three refresh intervals.
 Native workers inherit only `ANTHROPIC_*` and proxy variables from the service
 environment, plus the explicit SDK/Claude paths. One service still has one
-provider environment.
+provider environment. Put provider credentials in a mode-0600
+`EnvironmentFile=` referenced by the unit; there is no native key-file setting
+analogous to the Phase 9 wrapper key files.
 
 The service process reads the real `~/.claude`; the worker writes resumed
 transcripts there. Under the systemd template, keep `ProtectHome=read-only` and
-add `ReadWritePaths=%h/.claude` (plus the state directory). Do not widen the
-home mount. The exact write set was not measured against a real provider in
-offline tests; verify it before enabling native mode in production.
+add `ReadWritePaths=%h/.claude %h/.claude.json` (plus the state directory).
+`claude agents --json` was observed creating `~/.claude.json` and
+`~/.claude/backups` before any turn; temp siblings and the exact write set were
+not measured against a real provider in offline tests. Verify them before
+enabling native mode in production.
+
+`ProtectSystem=strict` also makes the repository read-only to the service.
+Native tools that edit project files will fail under the current unit. Real
+native takeover therefore needs a reviewed unit change (extra writable project
+roots, or a separate native unit with a less strict filesystem policy); offline
+code does not resolve this.
+
+Rollback: stop the service, remove the `native` block from `service.json`,
+restart and confirm the Phase 9 providers still load. Native transcripts and
+the `native-registry.json` file are untouched; remove the registry only if you
+also intend to discard native provider ID resolution.
 
 ## systemd user unit
 
@@ -245,6 +262,7 @@ one of:
 | `SERVICE_PHASE9_CONFIG_INVALID` | Real mode has no absolute `phase9Config` path |
 | `SERVICE_REAL_STATE_REQUIRED` | Real mode has no `stateFile`; there is no writable root to validate |
 | `SERVICE_NATIVE_REQUIRES_REAL` | A `native` object was supplied in fake mode |
+| `SERVICE_NATIVE_SDK_PATH_INVALID` / `_CLAUDE_PATH_INVALID` | Native path is missing, relative or not a string |
 | `SERVICE_NATIVE_SDK_MISSING` | Native `sdkPath` is absent or not a file |
 | `SERVICE_NATIVE_SDK_INVALID` / `_LOAD_FAILED` | Loaded SDK has no `listSessions()` or failed to import |
 | `SERVICE_NATIVE_HOME_INVALID` / `_OWNER` / `_MISMATCH` | Native home is not an owned directory, is `/`, or differs from the process HOME |

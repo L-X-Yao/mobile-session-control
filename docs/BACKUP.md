@@ -14,6 +14,7 @@ except the transient `runs/` tree.
 | `service.json` | Service configuration |
 | `phase9.json` | Private provider profile paths (real mode) |
 | `events.jsonl` | Append-only host event log; optional for recovery |
+| `native-registry.json` | Optional native mode: stable provider IDs to session IDs; 0600 |
 
 The archive contains tokens and encrypted session content. Keep it owner-only
 and outside the repository.

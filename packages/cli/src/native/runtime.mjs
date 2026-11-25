@@ -4,7 +4,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildNativeCatalog, loadNativeSdk, readActiveSessions } from './catalog.mjs';
+import {
+    buildNativeCatalog,
+    loadNativeSdk,
+    readActiveSessionsAsync,
+} from './catalog.mjs';
 import { inheritedProviderEnv } from './env.mjs';
 
 const CHILD = fileURLToPath(new URL('../session/claude-host-child.mjs', import.meta.url));
@@ -70,7 +74,9 @@ export async function createNativeRuntime({
     let closed = false;
 
     async function refresh() {
-        const active = readActiveSessions(claudePath || process.env.CLAUDE_CODE_PATH || 'claude');
+        const active = await readActiveSessionsAsync(
+            claudePath || process.env.CLAUDE_CODE_PATH || 'claude',
+        );
         if (!active.ok) throw new Error('SERVICE_NATIVE_ACTIVE_LIST_FAILED');
         const listed = await sdk.listSessions({ limit });
         if (!Array.isArray(listed)) throw new Error('SERVICE_NATIVE_SESSIONS_INVALID');
@@ -111,7 +117,9 @@ export async function createNativeRuntime({
             // new hosts until a refresh succeeds again, and re-check the live
             // list at launch so a session started in a terminal is forked.
             if (Date.now() - lastOkAt > refreshMs * 3) return null;
-            const active = readActiveSessions(claudePath || process.env.CLAUDE_CODE_PATH || 'claude');
+            const active = await readActiveSessionsAsync(
+                claudePath || process.env.CLAUDE_CODE_PATH || 'claude',
+            );
             if (!active.ok) return null;
             entry.active = active.map.has(entry.sessionId);
             try {

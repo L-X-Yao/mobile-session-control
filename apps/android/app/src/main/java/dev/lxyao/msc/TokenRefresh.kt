@@ -31,22 +31,26 @@ internal class TokenKeeper(
     private val client: TokenRenewalClient,
     private val clock: () -> Long = { System.currentTimeMillis() },
 ) {
-    @Synchronized
-    fun deviceToken(): String? {
-        val stamp = store.deviceStamp() ?: return null
-        if (!tokenDue(clock(), stamp)) return stamp.token
-        return renew(stamp) { renewed ->
+    fun deviceToken(): String? = synchronized(RENEW_LOCK) {
+        val stamp = store.deviceStamp() ?: return@synchronized null
+        if (!tokenDue(clock(), stamp)) return@synchronized stamp.token
+        renew(stamp) { renewed ->
             store.saveDeviceToken(renewed.token, renewed.ttlMs, clock())
         }
     }
 
-    @Synchronized
-    fun sessionToken(sessionId: String): String? {
-        val stamp = store.sessionStamp(sessionId) ?: return null
-        if (!tokenDue(clock(), stamp)) return stamp.token
-        return renew(stamp) { renewed ->
+    fun sessionToken(sessionId: String): String? = synchronized(RENEW_LOCK) {
+        val stamp = store.sessionStamp(sessionId) ?: return@synchronized null
+        if (!tokenDue(clock(), stamp)) return@synchronized stamp.token
+        renew(stamp) { renewed ->
             store.saveSessionToken(sessionId, renewed.token, renewed.ttlMs, clock())
         }
+    }
+
+    private companion object {
+        // Renewal rotates a single-use token. Share one lock across the
+        // ViewModel keeper and the push service keeper in this process.
+        val RENEW_LOCK = Any()
     }
 
     private fun renew(stamp: TokenStamp, save: (IssuedToken) -> Unit): String? {

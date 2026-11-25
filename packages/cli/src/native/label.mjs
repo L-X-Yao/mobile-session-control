@@ -6,21 +6,15 @@ export const MAX_NATIVE_LABEL = 64;
 export const ACTIVE_FORK_SUFFIX = ' [active→fork]';
 export const TAKEOVER_PREFIX = '接管 · ';
 
-function isUnsafe(codePoint) {
-    return codePoint <= 0x1f
-        || (codePoint >= 0x7f && codePoint <= 0x9f)
-        || (codePoint >= 0x200b && codePoint <= 0x200f)
-        || (codePoint >= 0x202a && codePoint <= 0x202e)
-        || (codePoint >= 0x2060 && codePoint <= 0x2069)
-        || codePoint === 0xfeff;
-}
+// Unicode category C covers controls, format characters (bidi, zero-width,
+// soft hyphen, interlinear annotation), private use and unassigned code points.
+const UNSAFE = /\p{C}/gu;
 
 export function sanitizeLabel(value) {
-    let result = '';
-    for (const character of String(value ?? '')) {
-        result += isUnsafe(character.codePointAt(0)) ? ' ' : character;
-    }
-    return result.replace(/\s+/g, ' ').trim();
+    return String(value ?? '')
+        .replace(UNSAFE, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
 }
 
 export function truncateLabel(value, max) {

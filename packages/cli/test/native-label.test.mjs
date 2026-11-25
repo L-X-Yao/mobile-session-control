@@ -10,15 +10,15 @@ import {
     truncateLabel,
 } from '../src/native/label.mjs';
 
-test('sanitizes controls, bidi and zero-width characters', () => {
-    const bidi = String.fromCharCode(0x202e);
-    const zeroWidth = String.fromCharCode(0x200b);
-    const bom = String.fromCharCode(0xfeff);
+test('sanitizes the whole Unicode C category', () => {
+    const unsafe = [
+        0x202e, 0x200b, 0xfeff, 0x061c, 0x206a, 0x00ad, 0xfff9, 0xe0001,
+    ].map((codePoint) => String.fromCodePoint(codePoint));
     assert.equal(
-        sanitizeLabel(`  a\u0000b${bidi}c${zeroWidth}d${bom}e  `),
-        'a b c d e',
+        sanitizeLabel(`  a\u0000b${unsafe.join('')}c  `),
+        'a b c',
     );
-    assert.equal(sanitizeLabel(String.fromCharCode(0x202a, 0x202e)), '');
+    assert.equal(sanitizeLabel(String.fromCodePoint(0x202a, 0x202e)), '');
     assert.equal(sanitizeLabel(null), '');
 });
 

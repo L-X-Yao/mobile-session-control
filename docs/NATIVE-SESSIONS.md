@@ -51,8 +51,9 @@ are listed, but resume against the relay's endpoint.
 
 ## Durable service mode
 
-The standalone script above and the durable service share the same catalog,
-label and host code. Add a `native` object to a real-mode service config:
+The standalone script and the durable service share the same catalog and label
+code; both resume through the same child host. Add a `native` object to a
+real-mode service config:
 
 ```json
 {
@@ -102,9 +103,12 @@ control remains `NO_DATA`.
   not the isolated fake-host path. Use it only on a trusted host and private
   network.
 - The durable service reads the real `~/.claude`; resumed workers write session
-  transcripts there. Keep `ProtectHome=read-only` and allow-list only
-  `%h/.claude` plus the service state directory. The exact write set was not
+  transcripts there. Keep `ProtectHome=read-only` and allow-list only the
+  observed paths plus the service state directory. The exact write set was not
   measured against a real provider in offline tests.
+- The example unit uses `ProtectSystem=strict`, so project directories are
+  read-only to native tools. Real file-editing takeover needs a reviewed unit
+  change; see `docs/SERVICE.md`.
 - There is no attach API for an arbitrary foreground `claude` process. Active
   sessions are forked, not hot-attached.
 - The phone does not preload the full native transcript; it starts a new relay

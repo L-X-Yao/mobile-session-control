@@ -4,11 +4,13 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { execFile, spawnSync } from 'node:child_process';
+import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import { nativeProviderLabel } from './label.mjs';
 
 const ACTIVE_LIST_MAX_BUFFER = 10 * 1024 * 1024;
+const execFileAsync = promisify(execFile);
 
 export async function loadNativeSdk(sdkPath) {
     let module;
@@ -23,17 +25,9 @@ export async function loadNativeSdk(sdkPath) {
     return module;
 }
 
-export function readActiveSessions(claudePath = 'claude') {
-    const result = spawnSync(claudePath, ['agents', '--json'], {
-        encoding: 'utf8',
-        maxBuffer: ACTIVE_LIST_MAX_BUFFER,
-        timeout: 10_000,
-    });
-    if (result.error || result.status !== 0) {
-        return { ok: false, map: new Map() };
-    }
+function parseActive(stdout) {
     try {
-        const list = JSON.parse(result.stdout);
+        const list = JSON.parse(stdout);
         if (!Array.isArray(list)) return { ok: false, map: new Map() };
         return {
             ok: true,
@@ -44,6 +38,31 @@ export function readActiveSessions(claudePath = 'claude') {
                     { status: item.status || item.state || 'active', kind: item.kind },
                 ])),
         };
+    } catch {
+        return { ok: false, map: new Map() };
+    }
+}
+
+export function readActiveSessions(claudePath = 'claude') {
+    const result = spawnSync(claudePath, ['agents', '--json'], {
+        encoding: 'utf8',
+        maxBuffer: ACTIVE_LIST_MAX_BUFFER,
+        timeout: 10_000,
+    });
+    if (result.error || result.status !== 0) {
+        return { ok: false, map: new Map() };
+    }
+    return parseActive(result.stdout);
+}
+
+export async function readActiveSessionsAsync(claudePath = 'claude') {
+    try {
+        const { stdout } = await execFileAsync(claudePath, ['agents', '--json'], {
+            encoding: 'utf8',
+            maxBuffer: ACTIVE_LIST_MAX_BUFFER,
+            timeout: 10_000,
+        });
+        return parseActive(stdout);
     } catch {
         return { ok: false, map: new Map() };
     }

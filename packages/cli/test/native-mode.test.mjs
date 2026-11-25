@@ -39,6 +39,8 @@ async function request(url, { token = null, method = 'GET', body = undefined } =
 
 test('native mode lists an active session, forks it and completes a fake turn', async (t) => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'msc-native-test-'));
+    const home = path.join(dir, 'home');
+    fs.mkdirSync(home, { mode: 0o700 });
     const agents = path.join(dir, 'agents.sh');
     fs.writeFileSync(
         agents,
@@ -49,7 +51,7 @@ test('native mode lists an active session, forks it and completes a fake turn', 
     const child = spawn(process.execPath, [NATIVE], {
         cwd: ROOT,
         env: {
-            HOME: process.env.HOME,
+            HOME: home,
             PATH: process.env.PATH || '/usr/bin:/bin',
             ANTHROPIC_TEST_MARKER: 'native-env-ok',
             CLAUDE_CODE_SESSION_ID: 'should-not-leak',

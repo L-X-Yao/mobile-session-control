@@ -463,6 +463,13 @@ function renderProviders() {
     const retained = providers.some((provider) => provider.id === previous
         && provider.enabled !== false);
     providerSelect.value = retained ? previous : '';
+    updateCreateButton();
+}
+
+function updateCreateButton() {
+    const button = createForm.querySelector('button');
+    const selected = providers.find((provider) => provider.id === providerSelect.value);
+    button.disabled = !selected || selected.enabled === false;
 }
 
 async function loadProviders() {
@@ -1303,6 +1310,7 @@ createForm.addEventListener('submit', (event) => {
     void createSession();
 });
 refreshButton.addEventListener('click', () => { void loadSessions(); });
+providerSelect.addEventListener('change', updateCreateButton);
 if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     window.addEventListener('storage', (event) => {
         // Another tab rotated or created a token; adopt it before this tab
