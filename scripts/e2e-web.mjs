@@ -168,6 +168,12 @@ async function main() {
         });
 
         await step('create session', async () => {
+            await page1.waitForSelector('#provider option[value="fake"]', {
+                state: 'attached', timeout: TIMEOUT,
+            });
+            const initial = await page1.$eval('#provider', (select) => select.value);
+            if (initial !== '') throw new Error(`provider auto-selected: ${initial}`);
+            await page1.selectOption('#provider', 'fake');
             await page1.waitForSelector('#create-form button:not([disabled])', { timeout: TIMEOUT });
             await page1.click('#create-form button');
             await page1.waitForSelector('#chat-view:not([hidden])', { timeout: TIMEOUT });

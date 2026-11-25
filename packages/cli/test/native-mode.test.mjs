@@ -52,6 +52,7 @@ test('native mode lists an active session, forks it and completes a fake turn', 
             HOME: process.env.HOME,
             PATH: process.env.PATH || '/usr/bin:/bin',
             ANTHROPIC_TEST_MARKER: 'native-env-ok',
+            CLAUDE_CODE_SESSION_ID: 'should-not-leak',
             CLAUDE_CODE_INLINE_TOOLS: '',
             CLAUDE_AGENT_SDK_PATH: FAKE_SDK,
             CLAUDE_CODE_PATH: agents,
@@ -129,7 +130,7 @@ test('native mode lists an active session, forks it and completes a fake turn', 
             { token: clientToken },
         );
         const list = events.body?.events || [];
-        return list.some((event) => event.content === 'FAKE-SDK-ENV:native-env-ok:0')
+        return list.some((event) => event.content === 'FAKE-SDK-ENV:native-env-ok:0:absent')
             && list.some((event) => event.type === 'turn-end');
     });
 

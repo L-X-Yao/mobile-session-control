@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- The web provider picker starts on an explicit placeholder and never
+  auto-selects the first provider; a session cannot be created until one is
+  chosen.
+- Native provider labels strip control, bidi and zero-width characters and
+  truncate by code point, so a surrogate pair cannot be split.
+- The Android client renews device and session tokens before expiry, storing
+  issue time and TTL with each token. Production `tokenTtlMs` remains `0`.
+- The local evidence checker reads required pack names from
+  `.local/evidence-packs.json`; no private pack name lives in the repository.
+  It also rejects empty manifest field values and non-regular files.
 - `v0.1.6` shipped with a temporary `scorecard-action` v2.5.0 pin because the
   v2.6.0 GHCR image referenced a missing platform manifest. Revert to v2.6.0
   or newer once the upstream image is repaired.

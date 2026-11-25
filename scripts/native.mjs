@@ -17,6 +17,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRelay } from '../packages/server/src/relay.mjs';
 import { startSessionManager } from '../packages/cli/src/session/manager.mjs';
+import { nativeProviderLabel } from '../packages/cli/src/native/label.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CHILD = path.join(ROOT, 'packages/cli/src/session/claude-host-child.mjs');
@@ -118,15 +119,13 @@ const providers = sessions.map((session, index) => {
         cwd: session.cwd,
         active: Boolean(live),
     });
-    // The relay catalog accepts at most 64 characters in a label. Reserve the
-    // fork marker so truncation cannot hide it.
-    const suffix = live ? ' [active→fork]' : '';
-    const prefix = `${title} · ${path.basename(session.cwd || '')}`
-        .replace(/[\u0000-\u001f\u007f]/g, ' ')
-        .slice(0, 64 - suffix.length);
     return {
         id,
-        label: `${prefix}${suffix}`,
+        label: nativeProviderLabel(
+            title,
+            path.basename(session.cwd || ''),
+            Boolean(live),
+        ),
         model: 'native',
         effort: 'low',
         transport: PROVIDER_TRANSPORT,

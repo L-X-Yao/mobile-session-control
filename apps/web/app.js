@@ -446,7 +446,13 @@ async function request(path, {
 }
 
 function renderProviders() {
+    const previous = providerSelect.value;
     providerSelect.replaceChildren();
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = '选择 Provider';
+    placeholder.disabled = true;
+    providerSelect.appendChild(placeholder);
     for (const provider of providers) {
         const option = document.createElement('option');
         option.value = provider.id;
@@ -454,6 +460,9 @@ function renderProviders() {
         option.disabled = provider.enabled === false;
         providerSelect.appendChild(option);
     }
+    const retained = providers.some((provider) => provider.id === previous
+        && provider.enabled !== false);
+    providerSelect.value = retained ? previous : '';
 }
 
 async function loadProviders() {
@@ -610,7 +619,10 @@ function renderSessions(list) {
 
 async function createSession() {
     const provider = providers.find((item) => item.id === providerSelect.value);
-    if (!provider || provider.enabled === false) return;
+    if (!provider || provider.enabled === false) {
+        setStatus('请先选择 Provider');
+        return;
+    }
     createForm.querySelector('button').disabled = true;
     setStatus('创建会话中');
     try {

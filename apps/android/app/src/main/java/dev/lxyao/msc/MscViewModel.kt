@@ -43,6 +43,8 @@ class MscViewModel(application: Application) : AndroidViewModel(application) {
     )
     val state = _state.asStateFlow()
     private var pollJob: Job? = null
+    private var keeper: TokenKeeper? = null
+    private var keeperBase: String? = null
 
     init {
         if (store.deviceToken != null) {
@@ -67,9 +69,9 @@ class MscViewModel(application: Application) : AndroidViewModel(application) {
         _state.update { it.copy(busy = true, error = null, status = "配对中") }
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val token = client.pair(base, code)
+                val issued = client.pair(base, code)
                 store.baseUrl = base
-                store.deviceToken = token
+                store.saveDeviceToken(issued.token, issued.ttlMs, System.currentTimeMillis())
                 _state.update {
                     it.copy(busy = false, screen = Screen.Sessions, code = "", status = "已配对")
                 }
@@ -86,27 +88,28 @@ class MscViewModel(application: Application) : AndroidViewModel(application) {
     private fun registerStoredPush() {
         val endpoint = store.pushEndpoint ?: return
         val base = store.baseUrl ?: return
-        val token = store.deviceToken ?: return
         viewModelScope.launch(Dispatchers.IO) {
+            val token = tokens(base).deviceToken() ?: return@launch
             runCatching { client.registerPush(base, token, endpoint) }
         }
     }
 
     fun loadSessions() {
-        val token = store.deviceToken ?: return
         val base = store.baseUrl ?: return
         _state.update { it.copy(busy = true, error = null) }
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val providers = client.providers(base, token)
+                val token = tokens(base).deviceToken()
+                    ?: throw IllegalStateException("token 失效，请重新配对")
+                val catalog = client.providers(base, token)
                 val sessions = client.sessions(base, token)
                 _state.update {
                     it.copy(
                         busy = false,
-                        providers = providers,
+                        providers = catalog.providers,
                         selectedProviderId = retainedProviderId(
                             it.selectedProviderId,
-                            providers,
+                            catalog.providers,
                         ),
                         sessions = sessions,
                         status = "已配对 · ${sessions.size} 个会话",
@@ -121,7 +124,6 @@ class MscViewModel(application: Application) : AndroidViewModel(application) {
     fun selectProvider(id: String) = _state.update { it.copy(selectedProviderId = id) }
 
     fun createSession() {
-        val token = store.deviceToken ?: return
         val base = store.baseUrl ?: return
         val selectedId = _state.value.selectedProviderId
         if (selectedId == null) {
@@ -137,8 +139,15 @@ class MscViewModel(application: Application) : AndroidViewModel(application) {
         _state.update { it.copy(busy = true, error = null, status = "创建会话中") }
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                val token = tokens(base).deviceToken()
+                    ?: throw IllegalStateException("token 失效，请重新配对")
                 val (sessionId, clientToken) = client.createSession(base, token, provider)
-                store.saveSessionToken(sessionId, clientToken)
+                store.saveSessionToken(
+                    sessionId,
+                    clientToken,
+                    store.deviceStamp()?.ttlMs ?: 0L,
+                    System.currentTimeMillis(),
+                )
                 _state.update { it.copy(busy = false, status = "会话已创建") }
                 loadSessions()
                 openSession(
@@ -162,7 +171,7 @@ class MscViewModel(application: Application) : AndroidViewModel(application) {
             _state.update { it.copy(error = "会话已关闭") }
             return
         }
-        val clientToken = store.sessionToken(session.sessionId) ?: run {
+        if (store.sessionToken(session.sessionId) == null) {
             _state.update { it.copy(error = "此会话缺少 client token，请从创建它的客户端打开") }
             return
         }
@@ -177,15 +186,22 @@ class MscViewModel(application: Application) : AndroidViewModel(application) {
                 status = "运行中",
             )
         }
-        pollJob = viewModelScope.launch(Dispatchers.IO) { poll(session.sessionId, clientToken) }
+        pollJob = viewModelScope.launch(Dispatchers.IO) { poll(session.sessionId) }
     }
 
-    private suspend fun poll(sessionId: String, clientToken: String) {
+    private suspend fun poll(sessionId: String) {
         val base = store.baseUrl ?: return
         var lastSeq = 0L
         while (_state.value.screen == Screen.Chat && _state.value.active?.sessionId == sessionId) {
             try {
-                val events = client.events(base, clientToken, sessionId, lastSeq)
+                val token = tokens(base).sessionToken(sessionId)
+                if (token == null) {
+                    _state.update {
+                        it.copy(status = "token 失效，请重新配对", error = "token 失效，请重新配对")
+                    }
+                    return
+                }
+                val events = client.events(base, token, sessionId, lastSeq)
                 if (events.isNotEmpty()) {
                     lastSeq = maxOf(lastSeq, events.maxOf { it.seq })
                     val status = when (val last = events.lastOrNull()) {
@@ -226,7 +242,6 @@ class MscViewModel(application: Application) : AndroidViewModel(application) {
     fun send() {
         val current = _state.value
         val session = current.active ?: return
-        val clientToken = store.sessionToken(session.sessionId) ?: return
         val base = store.baseUrl ?: return
         val text = current.input.trim()
         if (text.isEmpty()) return
@@ -243,7 +258,9 @@ class MscViewModel(application: Application) : AndroidViewModel(application) {
         }
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                client.sendMessage(base, clientToken, session.sessionId, text)
+                val token = tokens(base).sessionToken(session.sessionId)
+                    ?: throw IllegalStateException("token 失效，请重新配对")
+                client.sendMessage(base, token, session.sessionId, text)
             } catch (error: Exception) {
                 _state.update { it.copy(status = "发送失败：${error.message}") }
             }
@@ -252,12 +269,13 @@ class MscViewModel(application: Application) : AndroidViewModel(application) {
 
     fun decide(event: MscEvent, decision: String) {
         val session = _state.value.active ?: return
-        val clientToken = store.sessionToken(session.sessionId) ?: return
         val base = store.baseUrl ?: return
         val requestId = event.requestId ?: return
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                client.permissionDecision(base, clientToken, session.sessionId, requestId, decision)
+                val token = tokens(base).sessionToken(session.sessionId)
+                    ?: throw IllegalStateException("token 失效，请重新配对")
+                client.permissionDecision(base, token, session.sessionId, requestId, decision)
                 _state.update {
                     it.copy(
                         status = if (decision == "allow") "已允许" else "已拒绝",
@@ -284,7 +302,6 @@ class MscViewModel(application: Application) : AndroidViewModel(application) {
 
     fun submitQuestion(event: MscEvent) {
         val session = _state.value.active ?: return
-        val clientToken = store.sessionToken(session.sessionId) ?: return
         val base = store.baseUrl ?: return
         val questions = event.questions ?: return
         val requestId = event.requestId ?: return
@@ -302,7 +319,9 @@ class MscViewModel(application: Application) : AndroidViewModel(application) {
         }
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                client.questionAnswer(base, clientToken, session.sessionId, requestId, answers)
+                val token = tokens(base).sessionToken(session.sessionId)
+                    ?: throw IllegalStateException("token 失效，请重新配对")
+                client.questionAnswer(base, token, session.sessionId, requestId, answers)
                 _state.update {
                     it.copy(
                         status = "已提交回答",
@@ -318,11 +337,12 @@ class MscViewModel(application: Application) : AndroidViewModel(application) {
 
     fun stop() {
         val session = _state.value.active ?: return
-        val clientToken = store.sessionToken(session.sessionId) ?: return
         val base = store.baseUrl ?: return
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                client.stop(base, clientToken, session.sessionId)
+                val token = tokens(base).sessionToken(session.sessionId)
+                    ?: throw IllegalStateException("token 失效，请重新配对")
+                client.stop(base, token, session.sessionId)
                 _state.update { it.copy(status = "已发送 Stop") }
             } catch (error: Exception) {
                 _state.update { it.copy(error = error.message) }
@@ -332,15 +352,25 @@ class MscViewModel(application: Application) : AndroidViewModel(application) {
 
     fun close() {
         val session = _state.value.active ?: return
-        val clientToken = store.sessionToken(session.sessionId) ?: return
         val base = store.baseUrl ?: return
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                client.close(base, clientToken, session.sessionId)
+                val token = tokens(base).sessionToken(session.sessionId)
+                    ?: throw IllegalStateException("token 失效，请重新配对")
+                client.close(base, token, session.sessionId)
                 backToSessions()
             } catch (error: Exception) {
                 _state.update { it.copy(error = error.message) }
             }
+        }
+    }
+
+    private fun tokens(base: String): TokenKeeper {
+        val current = keeper
+        if (current != null && keeperBase == base) return current
+        return TokenKeeper(base, store, client).also {
+            keeper = it
+            keeperBase = base
         }
     }
 

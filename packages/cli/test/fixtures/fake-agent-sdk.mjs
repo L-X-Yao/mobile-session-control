@@ -69,7 +69,7 @@ export function query({ prompt, options = {} }) {
                 continue;
             }
             if (content.includes('nativeenv')) {
-                const text = `FAKE-SDK-ENV:${process.env.ANTHROPIC_TEST_MARKER || ''}:${process.env.CLAUDE_CODE_INLINE_TOOLS || ''}`;
+                const text = `FAKE-SDK-ENV:${process.env.ANTHROPIC_TEST_MARKER || ''}:${process.env.CLAUDE_CODE_INLINE_TOOLS || ''}:${process.env.CLAUDE_CODE_SESSION_ID || 'absent'}`;
                 yield { type: 'assistant', message: { content: [{ type: 'text', text }] } };
                 yield {
                     type: 'result', subtype: 'success', is_error: false, result: text,

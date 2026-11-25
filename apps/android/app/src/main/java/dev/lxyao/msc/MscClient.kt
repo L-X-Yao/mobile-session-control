@@ -26,6 +26,10 @@ data class SessionInfo(
     val eventCount: Int,
 )
 
+data class IssuedToken(val token: String, val ttlMs: Long)
+
+data class ProviderCatalog(val providers: List<Provider>, val tokenTtlMs: Long)
+
 data class MscEvent(
     val seq: Long,
     val type: String,
@@ -40,17 +44,18 @@ data class MscEvent(
 
 class MscHttpException(val status: Int, message: String) : Exception(message)
 
-class MscClient {
-    fun pair(baseUrl: String, code: String): String {
+internal class MscClient : TokenRenewalClient {
+    fun pair(baseUrl: String, code: String): IssuedToken {
         val body = JSONObject().put("code", code)
         val response = request(baseUrl, "/v1/pair", null, "POST", body)
-        return response.optString("token").ifEmpty { error("invalid_pair_response") }
+        val token = response.optString("token").ifEmpty { error("invalid_pair_response") }
+        return IssuedToken(token, response.optLong("tokenTtlMs", 0))
     }
 
-    fun providers(baseUrl: String, token: String): List<Provider> {
+    fun providers(baseUrl: String, token: String): ProviderCatalog {
         val response = request(baseUrl, "/v1/providers", token, "GET", null)
         val array = response.optJSONArray("providers") ?: JSONArray()
-        return (0 until array.length()).map { index ->
+        val providers = (0 until array.length()).map { index ->
             val item = array.getJSONObject(index)
             Provider(
                 id = item.optString("id"),
@@ -61,6 +66,13 @@ class MscClient {
                 enabled = item.optBoolean("enabled", true),
             )
         }
+        return ProviderCatalog(providers, response.optLong("tokenTtlMs", 0))
+    }
+
+    override fun renew(baseUrl: String, token: String): IssuedToken {
+        val response = request(baseUrl, "/v1/tokens/renew", token, "POST", null)
+        val renewed = response.optString("token").ifEmpty { error("invalid_renew_response") }
+        return IssuedToken(renewed, response.optLong("tokenTtlMs", 0))
     }
 
     fun sessions(baseUrl: String, token: String): List<SessionInfo> {

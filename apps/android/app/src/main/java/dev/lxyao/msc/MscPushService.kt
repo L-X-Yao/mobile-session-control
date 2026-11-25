@@ -79,10 +79,11 @@ class MscPushService : PushService() {
         val endpoint = store.pushEndpoint
         store.pushEndpoint = null
         val base = store.baseUrl
-        val token = store.deviceToken
-        if (endpoint != null && base != null && token != null) {
+        if (endpoint != null && base != null) {
             scope.launch {
-                runCatching { MscClient().unregisterPush(base, token, endpoint) }
+                val client = MscClient()
+                val token = TokenKeeper(base, store, client).deviceToken() ?: return@launch
+                runCatching { client.unregisterPush(base, token, endpoint) }
             }
         }
     }
@@ -94,9 +95,10 @@ class MscPushService : PushService() {
 
     private fun register(endpoint: String, store: MscStore) {
         val base = store.baseUrl ?: return
-        val token = store.deviceToken ?: return
         scope.launch {
-            runCatching { MscClient().registerPush(base, token, endpoint) }
+            val client = MscClient()
+            val token = TokenKeeper(base, store, client).deviceToken() ?: return@launch
+            runCatching { client.registerPush(base, token, endpoint) }
                 .onSuccess { Log.d(TAG, "endpoint registered") }
                 .onFailure { Log.w(TAG, "endpoint registration failed: ${it.javaClass.simpleName}") }
         }
