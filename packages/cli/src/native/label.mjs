@@ -29,8 +29,14 @@ export function truncateLabel(value, max) {
     return result;
 }
 
-export function nativeProviderLabel(title, project, live, max = MAX_NATIVE_LABEL) {
-    const suffix = live ? ACTIVE_FORK_SUFFIX : '';
+export function nativeProviderLabel(
+    title,
+    project,
+    live,
+    max = MAX_NATIVE_LABEL,
+    extraSuffix = '',
+) {
+    const suffix = `${live ? ACTIVE_FORK_SUFFIX : ''}${extraSuffix}`;
     const text = sanitizeLabel(title) || 'untitled';
     const location = sanitizeLabel(project);
     const raw = location

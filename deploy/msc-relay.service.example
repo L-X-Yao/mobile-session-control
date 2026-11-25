@@ -5,6 +5,7 @@
 #   @REPO@       absolute repository path
 #   @CONFIG@     absolute private service config path (mode 0600)
 #   @STATE_DIR@  writable private directory for state, key, pairing and logs
+#   @PROJECT_ROOT@  a project directory native tools may edit (optional)
 #
 # Phase 9 rejects a real-mode baseDir under ~/.local, ~/.config, ~/.cache,
 # ~/.ssh or ~/.claude. For real mode use a separate writable root (for example

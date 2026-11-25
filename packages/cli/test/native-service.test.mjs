@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { loadServiceConfig } from '../src/service.mjs';
 import {
     buildNativeCatalog,
+    projectHasHooks,
     readActiveSessions,
 } from '../src/native/catalog.mjs';
 import { createNativeRuntime } from '../src/native/runtime.mjs';
@@ -23,7 +24,7 @@ const SESSION_ID = '11111111-2222-4333-8444-555555555555';
 
 function tempDir(t) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'msc-native-service-'));
-    t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+    t.after(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }));
     return dir;
 }
 
@@ -130,6 +131,32 @@ test('catalog uses stable ids, active markers and skips missing cwd', (t) => {
     assert.ok(!second.providers.find((item) => item.id === firstId).label.includes('[active→fork]'));
 });
 
+test('catalog blocks a project whose settings define hooks', (t) => {
+    const dir = tempDir(t);
+    const work = path.join(dir, 'work');
+    fs.mkdirSync(path.join(work, '.claude'), { recursive: true });
+    fs.writeFileSync(
+        path.join(work, '.claude', 'settings.json'),
+        JSON.stringify({ hooks: { PreToolUse: [] } }),
+    );
+    assert.equal(projectHasHooks(work), true);
+    const { providers } = buildNativeCatalog([
+        { sessionId: SESSION_ID, cwd: work, customTitle: 'Hooky' },
+    ], new Map());
+    assert.equal(providers.length, 1);
+    assert.equal(providers[0].enabled, false);
+    assert.ok(providers[0].label.endsWith('[blocked:hooks]'));
+    assert.ok(providers[0].label.length <= 64);
+
+    const clean = path.join(dir, 'clean');
+    fs.mkdirSync(clean);
+    assert.equal(projectHasHooks(clean), false);
+    const malformed = path.join(dir, 'malformed');
+    fs.mkdirSync(path.join(malformed, '.claude'), { recursive: true });
+    fs.writeFileSync(path.join(malformed, '.claude', 'settings.json'), '{');
+    assert.equal(projectHasHooks(malformed), true);
+});
+
 test('active listing fails closed on a non-zero or malformed command', (t) => {
     const dir = tempDir(t);
     const good = agentsScript(dir, `echo '[{"sessionId":"${SESSION_ID}"}]'`);
@@ -204,6 +231,21 @@ test('native runtime uses a private HOME and the real config dir', async (t) => 
     });
     assert.equal(host.env.CLAUDE_CONFIG_DIR, configDir);
     assert.match(host.env.HOME, /msc-native-home-/);
+});
+
+test('an unusable config dir fails startup with SERVICE_NATIVE_CONFIG_DIR_INVALID', async (t) => {
+    const dir = tempDir(t);
+    const home = path.join(dir, 'home');
+    fs.mkdirSync(home, { mode: 0o700 });
+    // A regular file where the ~/.claude directory should be cannot be used.
+    fs.writeFileSync(path.join(home, '.claude'), 'not a directory\n');
+    await assert.rejects(createNativeRuntime({
+        sdkPath: FAKE_SDK,
+        claudePath: agentsScript(dir, 'echo "[]"'),
+        home,
+        limit: 1,
+        refreshMs: 60_000,
+    }), /^Error: SERVICE_NATIVE_CONFIG_DIR_INVALID$/);
 });
 
 test('the private HOME is owner-only and removed when the runtime closes', async (t) => {

@@ -26,7 +26,7 @@ const NATIVE_ID = `native-${
 
 function tempDir(t) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'msc-native-gap-'));
-    t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+    t.after(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }));
     return dir;
 }
 
@@ -305,6 +305,14 @@ test('an idle native session is resumed in place, not forked', async (t) => {
             === `FAKE-SDK-NATIVE:${SESSION_ID}:persist:default-sources:strict-mcp:same`);
     });
     child.kill('SIGTERM');
+    await new Promise((resolve) => {
+        if (child.exitCode !== null) {
+            resolve();
+            return;
+        }
+        child.once('close', resolve);
+        setTimeout(resolve, 2000).unref?.();
+    });
 });
 
 // Gap: label-c1-kept, label-2060-kept.
@@ -346,7 +354,7 @@ test('a manifest without a real value for a required field fails', () => {
             assert.notEqual(result.status, 0, `case ${index} passed`);
             assert.match(result.stderr, /no value for Authorization/);
         } finally {
-            fs.rmSync(dir, { recursive: true, force: true });
+            fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
         }
     }
 });

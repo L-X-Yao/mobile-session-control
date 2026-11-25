@@ -160,14 +160,20 @@ analogous to the Phase 9 wrapper key files.
 
 Native workers set `strictMcpConfig: true`: project, user, plugin and connector
 MCP servers are not connected, so a repository `.mcp.json` cannot start a
-command outside the phone approval gate. Project `CLAUDE.md` still loads. MCP in
-native sessions would need a separate reviewed opt-in.
+command outside the phone approval gate. Project `CLAUDE.md` is expected to
+load, but this was not yet measured on a real provider turn. MCP in native
+sessions would need a separate reviewed opt-in. Project settings hooks are a
+separate code path; see the boundary below.
 
 The worker `HOME` is a fresh temporary directory shared by the workers of one
 service. Project trust state is therefore not inherited from the terminal's
 `~/.claude.json`; project `permissions.allow`/`additionalDirectories` may not
 apply, while hooks from settings files can still run. This differs from a
 normal terminal session and is not yet exercised on a real provider turn.
+Project settings hooks are not covered by `strictMcpConfig`. Native providers
+whose project `.claude/settings.json` or `settings.local.json` defines hooks are
+disabled and labelled `[blocked:hooks]`; existing relay sessions for such a
+project also refuse a new host. Hook-free projects keep project `CLAUDE.md`.
 
 The service process reads the real `~/.claude`; the worker writes resumed
 transcripts there. Native workers run with a private temporary `HOME` and
@@ -277,7 +283,7 @@ one of:
 | `SERVICE_NATIVE_SDK_PATH_INVALID` / `_CLAUDE_PATH_INVALID` | Native path is missing, relative or not a string |
 | `SERVICE_NATIVE_SDK_MISSING` | Native `sdkPath` is absent or not a file |
 | `SERVICE_NATIVE_SDK_INVALID` / `_LOAD_FAILED` | Loaded SDK has no `listSessions()` or failed to import |
-| `SERVICE_NATIVE_CONFIG_DIR_INVALID` | `~/.claude` cannot be created or is not writable |
+| `SERVICE_NATIVE_CONFIG_DIR_INVALID` | `~/.claude` cannot be created as a directory |
 | `SERVICE_NATIVE_HOME_INVALID` / `_OWNER` / `_MISMATCH` | Native home is not an owned directory, is `/`, or differs from the process HOME |
 | `SERVICE_NATIVE_CLAUDE_MISSING` | Native `claudePath` is absent or not executable |
 | `SERVICE_NATIVE_ACTIVE_LIST_FAILED` | `claude agents --json` failed at startup |

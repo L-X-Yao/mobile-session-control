@@ -11,6 +11,37 @@ import { nativeProviderLabel } from './label.mjs';
 
 const ACTIVE_LIST_MAX_BUFFER = 10 * 1024 * 1024;
 const execFileAsync = promisify(execFile);
+const PROJECT_HOOK_FILES = [
+    path.join('.claude', 'settings.json'),
+    path.join('.claude', 'settings.local.json'),
+];
+
+export function projectHasHooks(cwd) {
+    for (const relative of PROJECT_HOOK_FILES) {
+        const file = path.join(cwd, relative);
+        let text;
+        try {
+            text = fs.readFileSync(file, 'utf8');
+        } catch (error) {
+            if (error.code === 'ENOENT') continue;
+            return true;
+        }
+        let parsed;
+        try {
+            parsed = JSON.parse(text);
+        } catch {
+            // A malformed project settings file may still be interpreted by
+            // the CLI; fail closed rather than run its hooks.
+            return true;
+        }
+        if (parsed && typeof parsed === 'object' && parsed.hooks) {
+            if (typeof parsed.hooks !== 'object' || parsed.hooks === null) return true;
+            if (Array.isArray(parsed.hooks) ? parsed.hooks.length > 0
+                : Object.keys(parsed.hooks).length > 0) return true;
+        }
+    }
+    return false;
+}
 
 export async function loadNativeSdk(sdkPath) {
     let module;
@@ -115,19 +146,27 @@ export function buildNativeCatalog(sessions, activeMap, {
         }
         const id = assignProviderId(session.sessionId, idBySession, used, reserved);
         const live = activeMap.get(session.sessionId);
+        const blocked = projectHasHooks(session.cwd);
         const title = session.customTitle || session.summary || session.firstPrompt || 'untitled';
         byId.set(id, {
             sessionId: session.sessionId,
             cwd: session.cwd,
             active: Boolean(live),
+            blocked,
         });
         providers.push({
             id,
-            label: nativeProviderLabel(title, path.basename(session.cwd), Boolean(live)),
+            label: nativeProviderLabel(
+                title,
+                path.basename(session.cwd),
+                Boolean(live),
+                undefined,
+                blocked ? ' [blocked:hooks]' : '',
+            ),
             model: 'native',
             effort: 'low',
             transport: 'anthropic-compatible-sse',
-            enabled: true,
+            enabled: !blocked,
         });
     }
     return { providers, byId };

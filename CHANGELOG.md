@@ -7,7 +7,9 @@
   provider IDs, and joins the existing Phase 9 providers in one relay. Native
   workers use a private temporary HOME and `CLAUDE_CONFIG_DIR`, so the real
   HOME root stays read-only, and set `strictMcpConfig: true` so project
-  `.mcp.json` cannot start commands outside the phone approval gate.
+  `.mcp.json` cannot start commands outside the phone approval gate. Projects
+  that define hooks in `.claude/settings*.json` are disabled as
+  `[blocked:hooks]`.
 - The web provider picker starts on an explicit placeholder and never
   auto-selects the first provider; a session cannot be created until one is
   chosen.

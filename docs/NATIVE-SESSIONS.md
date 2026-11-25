@@ -108,8 +108,10 @@ control remains `NO_DATA`.
   native tools may edit. The exact write set was not measured in a real
   sandbox.
 - Native workers set `strictMcpConfig: true`; project `.mcp.json` and other MCP
-  sources are not connected. Project `CLAUDE.md` still loads. Project trust and
-  `permissions.allow` are not inherited from the terminal's `~/.claude.json`.
+  sources are not connected. Project `CLAUDE.md` still loads for hook-free
+  projects. Projects that define hooks in `.claude/settings*.json` are disabled
+  and labelled `[blocked:hooks]`. Project trust and `permissions.allow` are not
+  inherited from the terminal's `~/.claude.json`.
 - The example unit uses `ProtectSystem=strict`, so project directories are
   read-only unless listed. Real file-editing takeover needs the reviewed unit
   change; see `docs/SERVICE.md`.
