@@ -76,7 +76,12 @@ export async function createNativeRuntime({
     // real home. The observed .claude.json lands in CLAUDE_CONFIG_DIR, which
     // remains the real read-write session store.
     const runtimeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'msc-native-home-'));
-    fs.chmodSync(runtimeHome, 0o700);
+    try {
+        fs.chmodSync(runtimeHome, 0o700);
+    } catch (error) {
+        try { fs.rmSync(runtimeHome, { recursive: true, force: true }); } catch { /* best effort */ }
+        throw error;
+    }
     const nativeEnv = {
         ...process.env,
         HOME: runtimeHome,

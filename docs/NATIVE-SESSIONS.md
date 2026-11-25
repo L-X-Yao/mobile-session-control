@@ -108,9 +108,12 @@ control remains `NO_DATA`.
   native tools may edit. The exact write set was not measured in a real
   sandbox.
 - Native workers load only user settings and set `strictMcpConfig: true`.
-  Project settings, skills, hooks, MCP and project `CLAUDE.md` are not loaded;
-  the real transcript and cwd are. Project trust and `permissions.allow` are
-  therefore not inherited from the terminal's `~/.claude.json`.
+  Project settings, skills, hooks and project `CLAUDE.md` are not loaded; the
+  real transcript and cwd are. `strictMcpConfig` ignores every MCP
+  configuration except servers passed in code, so user, project and plugin MCP
+  servers are all absent; `~/.claude.json` is still read for non-MCP global
+  config. Project trust and `permissions.allow` are therefore not inherited
+  from the terminal's `~/.claude.json`.
 - The example unit uses `ProtectSystem=strict`, so project directories are
   read-only unless listed. Real file-editing takeover needs the reviewed unit
   change; see `docs/SERVICE.md`.

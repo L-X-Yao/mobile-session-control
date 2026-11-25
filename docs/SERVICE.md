@@ -163,8 +163,11 @@ Native workers load only `settingSources: ['user']` and set
 loaded, and project `CLAUDE.md` is not loaded either. A repository therefore
 cannot run a project hook, helper, skill or MCP server outside the phone
 approval gate. User-level settings and hooks remain available because they are
-the operator's own trusted configuration. MCP in native sessions would need a
-separate reviewed opt-in.
+the operator's own trusted configuration. `strictMcpConfig: true` uses only
+MCP servers passed in code (none here) and ignores project `.mcp.json`, user
+settings, plugin-provided MCP servers and claude.ai connectors;
+`~/.claude.json` is still read for non-MCP global config. Enabling MCP in
+native sessions would therefore need a separate reviewed opt-in.
 
 The worker `HOME` is a fresh temporary directory shared by the workers of one
 service. Project trust state is therefore not inherited from the terminal's

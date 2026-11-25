@@ -1,6 +1,6 @@
 // Native catalog, runtime and service-config tests. No real Claude session or
 // provider is used; the Agent SDK and `claude agents` are fakes.
-import test from 'node:test';
+import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -253,6 +253,26 @@ test('a failed startup leaves no private HOME behind', async (t) => {
         limit: 1,
         refreshMs: 60_000,
     }), /SERVICE_NATIVE_ACTIVE_LIST_FAILED/);
+    assert.deepEqual(
+        fs.readdirSync(os.tmpdir()).filter((name) => name.startsWith('msc-native-home-')), before,
+    );
+});
+
+test('a private-HOME chmod failure leaves no temporary directory', async (t) => {
+    const before = fs.readdirSync(os.tmpdir()).filter((name) => name.startsWith('msc-native-home-'));
+    const dir = tempDir(t);
+    const home = path.join(dir, 'home');
+    fs.mkdirSync(home, { mode: 0o700 });
+    const chmod = mock.method(fs, 'chmodSync', () => {
+        throw new Error('MSC-CHMOD-FAIL');
+    });
+    t.after(() => chmod.mock.restore());
+    await assert.rejects(createNativeRuntime({
+        sdkPath: FAKE_SDK,
+        home,
+        limit: 1,
+        refreshMs: 60_000,
+    }), /MSC-CHMOD-FAIL/);
     assert.deepEqual(
         fs.readdirSync(os.tmpdir()).filter((name) => name.startsWith('msc-native-home-')), before,
     );
