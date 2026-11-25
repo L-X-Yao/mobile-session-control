@@ -97,6 +97,16 @@ paired over adb reverse, selected the native provider and completed one real
 turn (`NATIVE-PHONE-OK`). That run was ADB-driven, so human hands-on phone
 control remains `NO_DATA`.
 
+2026-11-25: through a temporary sandboxed service with a private HOME, the real
+config directory, user-only settings and `strictMcpConfig`, a real DeepSeek
+seed and same-session resume completed (`M3-SEED-OK`, `M3-RESUME-OK`); the
+transcript grew from 168,975 to 226,258 bytes. A Bash request was denied at the
+relay; no file was created and the assistant returned
+`M3-APPROVAL-DENIED-OK` (transcript 236,647 bytes). The host user settings set
+`permissions.defaultMode: bypassPermissions`; the worker's explicit
+`permissionMode: 'default'` still produced the approval request on this path.
+Phone/ADB, fork, Stop, reconnect and production enablement remain `NO_DATA`.
+
 ## Boundaries
 
 - Native mode loads the real user settings and transcripts. It is intentionally

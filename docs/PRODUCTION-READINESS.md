@@ -36,7 +36,7 @@ Android parity, iOS-specific packaging.
 
 | Claim | Evidence | Status |
 |---|---|---|
-| Offline behavior | `npm test` 242 tests, scenario suite, 89% line coverage | PASS |
+| Offline behavior | `npm test` 243 tests, scenario suite, 89% line coverage | PASS |
 | Browser client | Playwright mobile E2E: pairing, allow/deny, question, Stop, two tabs, renewal, revocation | PASS |
 | Android client | Debug APK builds/lints; ADB fake-relay smoke: pair, chat, allow, question | PASS |
 | Android real service | 2026-11-21 HTTPS/Tailscale: pair, DeepSeek provider, one real completed turn | PASS |
@@ -51,6 +51,7 @@ Android parity, iOS-specific packaging.
 | Native fork of a live session | Active background source forked: new session ID, `NATIVE-FORK-OK`, source transcript unchanged during the turn | PASS |
 | Native session phone control | 2026-11-24 Android debug build over adb reverse: pair, select native provider, one real turn returned `NATIVE-PHONE-OK`; ADB-driven, not human hands-on | PASS |
 | Native takeover in the durable service | Fake SDK and fake `claude agents`: merged Phase 9 + native catalog, stable IDs, active fork and one fake turn | PASS (fake SDK) |
+| Native takeover through a real sandboxed service | 2026-11-25 temporary systemd unit: real DeepSeek seed + resume (`M3-SEED-OK`, `M3-RESUME-OK`), transcript 168,975 -> 226,258 bytes; denied Bash created no file (`M3-APPROVAL-DENIED-OK`), transcript 236,647 bytes | PASS (M3b) |
 | Backup recovery | Plaintext and encrypted restore drills | PASS |
 | Metrics | Relay metrics endpoint test | PASS |
 | CI matrix | Node 22 and 24, CodeQL, Browser E2E | PASS |
