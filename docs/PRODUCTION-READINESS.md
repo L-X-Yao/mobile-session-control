@@ -52,6 +52,7 @@ Android parity, iOS-specific packaging.
 | Native session phone control | 2026-11-24 Android debug build over adb reverse: pair, select native provider, one real turn returned `NATIVE-PHONE-OK`; ADB-driven, not human hands-on | PASS |
 | Native takeover in the durable service | Fake SDK and fake `claude agents`: merged Phase 9 + native catalog, stable IDs, active fork and one fake turn | PASS (fake SDK) |
 | Native takeover through a real sandboxed service | 2026-11-25 temporary systemd unit: real DeepSeek seed + resume (`M3-SEED-OK`, `M3-RESUME-OK`), transcript 168,975 -> 226,258 bytes; denied Bash created no file (`M3-APPROVAL-DENIED-OK`), transcript 236,647 bytes | PASS (M3b) |
+| Native real Stop and restart reconnect | 2026-11-26 temporary systemd unit: fork `M3F-FORK-OK`; Stop cancelled a running Bash command and no finished file existed 12 s later; service restart replayed nothing and resumed the same fork; reconnect `M3F-RECONNECT-OK` in the same transcript; close returned 409 | PASS (M3f) |
 | Backup recovery | Plaintext and encrypted restore drills | PASS |
 | Metrics | Relay metrics endpoint test | PASS |
 | CI matrix | Node 22 and 24, CodeQL, Browser E2E | PASS |
@@ -76,6 +77,6 @@ A production release requires: green CI, CodeQL, Browser E2E and Scorecard; a
 restore drill on the current backup; a clean `npm run precommit`; no open
 high/medium review finding; and an explicit user approval for the tag and push.
 
-A `v0.2.0` tag additionally requires M3c (real fork, Stop and close/reconnect),
-a 24-hour production soak and human hands-on checks. The source version may be
+A `v0.2.0` tag additionally requires the real fork/Stop/close/reconnect path
+(M3f, PASS) and a 24-hour production soak plus human hands-on checks. The source version may be
 `0.2.0` before those are complete, but no tag or release is created.

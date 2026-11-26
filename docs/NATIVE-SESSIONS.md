@@ -105,7 +105,13 @@ relay; no file was created and the assistant returned
 `M3-APPROVAL-DENIED-OK` (transcript 236,647 bytes). The host user settings set
 `permissions.defaultMode: bypassPermissions`; the worker's explicit
 `permissionMode: 'default'` still produced the approval request on this path.
-Phone/ADB, fork, Stop, reconnect and production enablement remain `NO_DATA`.
+2026-11-26: after the cursor, fork-binding and Stop-retire fixes, a temporary
+unit ran a real fork, a Stop with a running Bash command, a service restart and
+a reconnect. Fork returned `M3F-FORK-OK`; Stop cancelled the turn and no
+finished file existed 12 s later; the restart replayed nothing and resumed the
+same fork; reconnect returned `M3F-RECONNECT-OK` in that transcript; close
+returned 409. Phone/ADB, human hands-on and production enablement remain
+`NO_DATA`.
 
 ## Boundaries
 
