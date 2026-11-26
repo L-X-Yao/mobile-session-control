@@ -431,6 +431,18 @@ test('hydrateSession defaults missing worker cursors and rejects invalid ones', 
         () => hydrateSession({ ...base, workerMessageSeq: 1 }),
         /STATE_FILE_INVALID/,
     );
+    assert.equal(
+        hydrateSession({ ...base, nativeSessionId: 'fork-1' }).nativeSessionId,
+        'fork-1',
+    );
+    assert.throws(
+        () => hydrateSession({ ...base, nativeSessionId: '' }),
+        /STATE_FILE_INVALID/,
+    );
+    assert.throws(
+        () => hydrateSession({ ...base, nativeSessionId: 'x'.repeat(201) }),
+        /STATE_FILE_INVALID/,
+    );
 });
 
 test('relay rejects unsafe or corrupt state files', async (t) => {
