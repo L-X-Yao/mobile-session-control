@@ -85,6 +85,8 @@ message/event history readable by its client and worker tokens until eviction.
 | GET | `/v1/sessions/:id/events?after=N&limit=M&tail=1` | client | none | `{ closed, events: [...], hasMore }` |
 | POST | `/v1/sessions/:id/commands` | client | `{ type, ... }` | `{ seq }` |
 | GET | `/v1/sessions/:id/commands?after=N` | worker | none | `{ closed, commands: [...] }` |
+| GET | `/v1/sessions/:id/cursor` | worker | none | `{ messageSeq, commandSeq }` |
+| POST | `/v1/sessions/:id/cursor` | worker | `{ messageSeq, commandSeq }` | `{ messageSeq, commandSeq }`; monotonic and bounded by observed sequences |
 | POST | `/v1/sessions/:id/close` | client | none | `{ sessionId, closed, closedAt }` |
 
 Pagination: `after=N` is exclusive; responses contain entries with `seq > N`.
@@ -133,7 +135,14 @@ manager-authenticated rows additionally include `workerToken`.
 
 Commands are client-authored, stored with a sequence number, and consumed by the
 Phase 6/7 host worker (`packages/cli/src/session/host-worker.mjs`), which polls
-`GET /v1/sessions/:id/commands?after=N`. The older M1 fake worker
+`GET /v1/sessions/:id/commands?after=N`. The worker acknowledges consumed
+messages and commands through `POST /v1/sessions/:id/cursor`; the relay stores
+both cursors in the session snapshot. A worker restarted against the same
+session starts after the acknowledged sequence instead of replaying earlier
+user messages. Cursors may only advance and may not exceed the highest observed
+message or command sequence; a lower value returns `409 cursor_regressed`.
+Older state snapshots without the fields load with both cursors at zero. The
+older M1 fake worker
 (`packages/cli/src/m1/worker.mjs`) does not poll commands; in the M1 demo slices
 `stop` and `permission-decision` are stored but have no effect. Only one
 permission or question request may be pending; a decision or answer must match
@@ -172,16 +181,20 @@ again. `allowText` defaults to true for questions created from the Claude Code
 - M1 separates pair, client, worker and local manager tokens. The pair token
   cannot read session data or worker tokens; the worker token cannot create
   sessions or post user messages; the client token cannot read the worker
-  command inbox or post assistant events. Both client and worker may read the
-  message log; the Web client replays user messages from it on reopen. The manager token is process-local and must never be
-  sent to the Web client; relay startup rejects a pair/manager token collision.
+  command inbox, read or advance the worker cursor, or post assistant events.
+  Both client and worker may read the message log; the Web client replays user
+  messages from it on reopen. The manager token is process-local and must never
+  be sent to the Web client; relay startup rejects a pair/manager token
+  collision.
   The provider catalog is metadata only; wrapper and key-file paths stay in the
   daemon.
 - Relay provider metadata validation is intentionally loose. Strict profile
   validation remains in `packages/cli/src/providers/schema.mjs` and the launcher
   boundary; do not use the relay as the profile validator.
 - Delivery is at-least-once. A relay failure after `turn-start` may duplicate
-  the turn-start event; M1 does not guarantee exactly-once processing.
+  the turn-start event; M1 does not guarantee exactly-once processing. The
+  worker cursor reduces replay after a worker restart, but a crash between
+  delivery and acknowledgement can still repeat one message.
 - The worker consumes non-user or malformed messages without calling the
   provider. Their `seq` is advanced to avoid a poison loop; valid user messages
   are still processed.

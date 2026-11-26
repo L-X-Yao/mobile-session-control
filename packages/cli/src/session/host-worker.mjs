@@ -110,7 +110,9 @@ export async function startHostWorker({
     let turnEndPending = false;
     let cleanupError = null;
     let lastMessageSeq = 0;
+    let ackMessageSeq = 0;
     let lastCommandSeq = 0;
+    let cursorDirty = false;
     const userQueue = [];
 
     const postEvent = (body) => requestJson(
@@ -142,6 +144,45 @@ export async function startHostWorker({
         controller.abort();
         closeHost();
     };
+
+    async function loadCursor() {
+        let cursor;
+        try {
+            cursor = await requestJson(`${relayBase}/v1/sessions/${sessionId}/cursor`, {
+                token, timeoutMs, signal,
+            });
+        } catch (error) {
+            throw new Error(`WORKER_CURSOR_UNAVAILABLE:${error.message}`);
+        }
+        if (!Number.isSafeInteger(cursor?.messageSeq) || cursor.messageSeq < 0
+            || !Number.isSafeInteger(cursor?.commandSeq) || cursor.commandSeq < 0) {
+            throw new Error('WORKER_CURSOR_INVALID');
+        }
+        lastMessageSeq = cursor.messageSeq;
+        ackMessageSeq = cursor.messageSeq;
+        lastCommandSeq = cursor.commandSeq;
+    }
+
+    async function flushCursor() {
+        if (!cursorDirty || stopped) return;
+        try {
+            await requestJson(`${relayBase}/v1/sessions/${sessionId}/cursor`, {
+                token,
+                method: 'POST',
+                body: { messageSeq: ackMessageSeq, commandSeq: lastCommandSeq },
+                timeoutMs,
+                signal,
+            });
+            cursorDirty = false;
+        } catch (error) {
+            if (error.status === 409 && error.message === 'session_closed') {
+                stopForClosedSession();
+            }
+            // Keep the dirty flag; retry on the next loop or on stop().
+        }
+    }
+
+    await loadCursor();
 
     const host = createHost({
         command,
@@ -192,8 +233,10 @@ export async function startHostWorker({
         }
         const next = userQueue.shift();
         try {
-            host.sendUserMessage(next);
+            host.sendUserMessage(next.content);
             turnActive = true;
+            ackMessageSeq = next.seq;
+            cursorDirty = true;
         } catch {
             stopped = true;
             controller.abort();
@@ -203,6 +246,8 @@ export async function startHostWorker({
 
     async function loop() {
         while (!stopped && !host.childExited) {
+            await flushCursor();
+            if (stopped) break;
             let commands;
             try {
                 commands = await requestJson(
@@ -232,15 +277,19 @@ export async function startHostWorker({
                         host.sendQuestionAnswer(command.requestId, command.answers);
                     } else if (command.type === 'stop') {
                         userQueue.length = 0;
+                        ackMessageSeq = lastMessageSeq;
+                        cursorDirty = true;
                         stopping = turnActive || turnEndPending;
                         if (turnActive) host.stop();
                     }
-                    lastCommandSeq = command.seq;
                 } catch {
                     // A stale/invalid decision is consumed; the host remains safe.
-                    lastCommandSeq = command.seq;
                 }
+                lastCommandSeq = command.seq;
+                cursorDirty = true;
             }
+            await flushCursor();
+            if (stopped) break;
             if (stopping) {
                 await sleep(pollMs, signal);
                 continue;
@@ -271,28 +320,35 @@ export async function startHostWorker({
                 if (message.role !== 'user' || typeof message.content !== 'string'
                     || message.content.length === 0 || message.content.length > 10000) {
                     lastMessageSeq = message.seq;
+                    ackMessageSeq = message.seq;
+                    cursorDirty = true;
                     continue;
                 }
-                lastMessageSeq = message.seq;
                 if (turnActive || userQueue.length > 0) {
-                    userQueue.push(message.content);
+                    userQueue.push({ content: message.content, seq: message.seq });
+                    lastMessageSeq = message.seq;
                     continue;
                 }
                 try {
                     host.sendUserMessage(message.content);
                     turnActive = true;
+                    lastMessageSeq = message.seq;
+                    ackMessageSeq = message.seq;
+                    cursorDirty = true;
                 } catch {
                     stopped = true;
                     controller.abort();
                     break;
                 }
             }
+            await flushCursor();
             if (!stopped) await sleep(pollMs, signal);
         }
     }
 
     const running = loop();
     const stop = async () => {
+        await flushCursor();
         stopped = true;
         controller.abort();
         try {

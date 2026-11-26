@@ -36,7 +36,7 @@ Android parity, iOS-specific packaging.
 
 | Claim | Evidence | Status |
 |---|---|---|
-| Offline behavior | `npm test` 246 tests, scenario suite, 89% line coverage | PASS |
+| Offline behavior | `npm test` 249 tests, scenario suite, 89% line coverage | PASS |
 | Browser client | Playwright mobile E2E: pairing, allow/deny, question, Stop, two tabs, renewal, revocation | PASS |
 | Android client | Debug APK builds/lints; ADB fake-relay smoke: pair, chat, allow, question | PASS |
 | Android real service | 2026-11-21 HTTPS/Tailscale: pair, DeepSeek provider, one real completed turn | PASS |

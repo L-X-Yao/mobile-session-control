@@ -811,6 +811,8 @@ export async function createRelay({
                 nextMessageSeq: 1,
                 nextEventSeq: 1,
                 nextCommandSeq: 1,
+                workerMessageSeq: 0,
+                workerCommandSeq: 0,
             };
             sessions.set(session.id, session);
             tokens.set(session.clientToken, {
@@ -871,6 +873,43 @@ export async function createRelay({
                 commandCount: session.commands.length,
             });
             return;
+        }
+
+        if (parts.length === 4 && parts[3] === 'cursor') {
+            if (!authorizeSession('worker')) return;
+            if (req.method === 'GET') {
+                sendJson(res, 200, {
+                    messageSeq: session.workerMessageSeq,
+                    commandSeq: session.workerCommandSeq,
+                });
+                return;
+            }
+            if (req.method === 'POST') {
+                const body = await readBodyOrRespond(req, res);
+                if (!body) return;
+                const maxMessage = session.nextMessageSeq - 1;
+                const maxCommand = session.nextCommandSeq - 1;
+                if (!Number.isSafeInteger(body.messageSeq) || body.messageSeq < 0
+                    || body.messageSeq > maxMessage
+                    || !Number.isSafeInteger(body.commandSeq) || body.commandSeq < 0
+                    || body.commandSeq > maxCommand) {
+                    sendJson(res, 400, { error: 'invalid_cursor' });
+                    return;
+                }
+                if (body.messageSeq < session.workerMessageSeq
+                    || body.commandSeq < session.workerCommandSeq) {
+                    sendJson(res, 409, { error: 'cursor_regressed' });
+                    return;
+                }
+                session.workerMessageSeq = body.messageSeq;
+                session.workerCommandSeq = body.commandSeq;
+                persist();
+                sendJson(res, 200, {
+                    messageSeq: session.workerMessageSeq,
+                    commandSeq: session.workerCommandSeq,
+                });
+                return;
+            }
         }
 
         if (parts.length === 4 && parts[3] === 'close' && req.method === 'POST') {

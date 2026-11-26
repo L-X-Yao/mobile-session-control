@@ -99,30 +99,56 @@ async function request(url, { token = null, method = 'GET', body = undefined } =
     return { status: response.status, body: await response.json().catch(() => null) };
 }
 
+function waitExit(child, timeoutMs = 15_000) {
+    if (child.exitCode !== null) return Promise.resolve(child.exitCode);
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('exit timeout')), timeoutMs);
+        child.once('close', (code) => {
+            clearTimeout(timer);
+            resolve(code);
+        });
+    });
+}
+
 async function startService(t) {
     const dir = tempDir(t);
     const { config, home, stateDir } = writeServiceFixture(dir);
-    const child = spawn(process.execPath, [SERVICE, config], {
-        env: { PATH: process.env.PATH || '/usr/bin:/bin', HOME: home },
-        stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    let child = null;
     let output = '';
-    child.stdout.setEncoding('utf8');
-    child.stderr.setEncoding('utf8');
-    child.stdout.on('data', (chunk) => { output += chunk; });
-    child.stderr.on('data', (chunk) => { output += chunk; });
+    const boot = () => {
+        output = '';
+        child = spawn(process.execPath, [SERVICE, config], {
+            env: { PATH: process.env.PATH || '/usr/bin:/bin', HOME: home },
+            stdio: ['ignore', 'pipe', 'pipe'],
+        });
+        child.stdout.setEncoding('utf8');
+        child.stderr.setEncoding('utf8');
+        child.stdout.on('data', (chunk) => { output += chunk; });
+        child.stderr.on('data', (chunk) => { output += chunk; });
+    };
     t.after(() => {
-        if (child.exitCode === null) child.kill('SIGKILL');
+        if (child && child.exitCode === null) child.kill('SIGKILL');
     });
-
-    const pairing = await waitFor(() => {
+    const readPairing = () => waitFor(() => {
         try {
             return JSON.parse(fs.readFileSync(path.join(stateDir, 'pairing.json'), 'utf8'));
         } catch {
             return null;
         }
     });
+    const waitHealth = (url) => waitFor(async () => {
+        try {
+            const response = await fetch(`${url}/v1/health`, { signal: AbortSignal.timeout(2000) });
+            return response.status === 200;
+        } catch {
+            return false;
+        }
+    });
+
+    boot();
+    const pairing = await readPairing();
     assert.ok(pairing.url && pairing.pairingCode, output);
+    await waitHealth(pairing.url);
     const paired = await request(`${pairing.url}/v1/pair`, {
         method: 'POST', body: { code: pairing.pairingCode },
     });
@@ -132,7 +158,38 @@ async function startService(t) {
     assert.equal(providers.status, 200, output);
     const native = providers.body.providers.find((item) => item.id.startsWith('native-'));
     assert.ok(native, output);
-    return { url: pairing.url, token, native, output: () => output };
+    const service = { url: pairing.url, token, native, output: () => output };
+    service.restart = async () => {
+        const previousUrl = service.url;
+        if (child.exitCode === null) {
+            child.kill('SIGTERM');
+            await waitExit(child);
+        }
+        boot();
+        let next;
+        try {
+            next = await waitFor(() => {
+                try {
+                    const parsed = JSON.parse(
+                        fs.readFileSync(path.join(stateDir, 'pairing.json'), 'utf8'),
+                    );
+                    return parsed.url && parsed.url !== previousUrl ? parsed : null;
+                } catch {
+                    return null;
+                }
+            });
+        } catch (error) {
+            throw new Error(`${error.message}\n${output}`);
+        }
+        assert.ok(next.url, output);
+        try {
+            await waitHealth(next.url);
+        } catch (error) {
+            throw new Error(`${error.message} url=${next.url}\n${output}`);
+        }
+        service.url = next.url;
+    };
+    return service;
 }
 
 async function createSession(service) {
@@ -213,7 +270,7 @@ test('native service Stop interrupts a turn and keeps the worker usable', async 
     );
 });
 
-test('native service replays events after a reconnect without repeating a turn', async (t) => {
+test('native service resumes from the persisted cursor after a restart', async (t) => {
     const service = await startService(t);
     const session = await createSession(service);
 
@@ -223,16 +280,12 @@ test('native service replays events after a reconnect without repeating a turn',
     );
     assert.equal(first.events.filter((event) => event.content === 'FAKE-SDK-OK:hello').length, 1);
     const lastSeq = first.events.at(-1).seq;
-    const replayed = await events(service, session, 0);
-    assert.equal(
-        replayed.events.filter((event) => event.content === 'FAKE-SDK-OK:hello').length,
-        1,
-    );
-    assert.equal(new Set(replayed.events.map((event) => event.seq)).size, replayed.events.length);
 
-    const afterLast = await events(service, session, lastSeq);
-    assert.deepEqual(afterLast.events, []);
-    assert.equal(afterLast.hasMore, false);
+    await service.restart();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const afterRestart = await events(service, session, lastSeq);
+    assert.deepEqual(afterRestart.events, []);
+    assert.equal(afterRestart.hasMore, false);
 
     await send(service, session, 'hello2');
     const second = await waitForEvent(
@@ -240,6 +293,10 @@ test('native service replays events after a reconnect without repeating a turn',
             && event.seq > lastSeq,
     );
     assert.equal(second.events.filter((event) => event.content === 'FAKE-SDK-OK:hello2').length, 1);
+    assert.equal(
+        second.events.filter((event) => event.content === 'FAKE-SDK-OK:hello').length,
+        1,
+    );
     assert.equal(
         second.events.filter((event) => event.type === 'turn-end' && event.status === 'completed')
             .length,

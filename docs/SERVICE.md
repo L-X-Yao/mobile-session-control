@@ -147,7 +147,9 @@ mode-0600 `native-registry.json` beside the state file maps IDs to session IDs
 so an open relay session still resolves after a service restart, even when the
 native session is outside the recent list. It grows as sessions are seen; it is
 small, but deleting it resets old ID resolution. Keep the state directory
-private.
+private. Worker message and command cursors are stored in the same state
+snapshot, so a restarted worker resumes after the last acknowledged item
+instead of replaying earlier user messages.
 
 If `claude agents --json` fails at startup, the service refuses to start: it
 cannot prove which sessions are live. A later refresh failure keeps the last

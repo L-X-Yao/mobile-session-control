@@ -369,6 +369,70 @@ test('host worker bridges messages, approvals and stop through the relay', async
     assert.throws(() => process.kill(worker.host.pid, 0));
 });
 
+test('host worker resumes from the persisted cursor after a restart', async (t) => {
+    const relay = await createRelay({ port: 0 });
+    let worker = null;
+    t.after(async () => {
+        if (worker) await worker.stop();
+        await relay.close();
+    });
+    const { token: pairToken } = await pair(relay);
+    const session = await createSession(relay, pairToken);
+    const options = {
+        relayUrl: relay.url,
+        token: session.workerToken,
+        sessionId: session.sessionId,
+        command: process.execPath,
+        args: [FAKE_HOST],
+        env: ENV,
+        pollMs: 10,
+    };
+    const sessionUrl = `${relay.url}/v1/sessions/${session.sessionId}`;
+    worker = await startHostWorker(options);
+
+    await requestJson(`${sessionUrl}/messages`, {
+        token: session.clientToken, method: 'POST', body: { content: 'hello' },
+    });
+    let events = await waitForEvents(
+        relay, session.clientToken, session.sessionId,
+        (items) => items.some((event) => event.type === 'turn-end'),
+    );
+    assert.equal(events.filter((event) => event.type === 'turn-end').length, 1);
+
+    let cursor = null;
+    const deadline = Date.now() + 3000;
+    while (Date.now() < deadline) {
+        cursor = await requestJson(`${sessionUrl}/cursor`, { token: session.workerToken });
+        if (cursor.messageSeq === 1) break;
+        await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    assert.equal(cursor.messageSeq, 1);
+
+    await worker.stop();
+    worker = await startHostWorker(options);
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    events = await waitForEvents(
+        relay, session.clientToken, session.sessionId,
+        (items) => items.some((event) => event.type === 'turn-end'),
+    );
+    assert.equal(events.filter((event) => event.type === 'turn-end').length, 1);
+    assert.equal(
+        events.filter((event) => event.content === 'FAKE-OK:hello').length,
+        1,
+    );
+
+    await requestJson(`${sessionUrl}/messages`, {
+        token: session.clientToken, method: 'POST', body: { content: 'second' },
+    });
+    events = await waitForEvents(
+        relay, session.clientToken, session.sessionId,
+        (items) => items.filter((event) => event.type === 'turn-end').length >= 2,
+    );
+    assert.equal(events.filter((event) => event.type === 'turn-end').length, 2);
+    assert.equal(events.filter((event) => event.content === 'FAKE-OK:hello').length, 1);
+    assert.equal(events.filter((event) => event.content === 'FAKE-OK:second').length, 1);
+});
+
 test('host worker stops an idle host when the session closes', async (t) => {
     const relay = await createRelay({ port: 0 });
     let worker = null;

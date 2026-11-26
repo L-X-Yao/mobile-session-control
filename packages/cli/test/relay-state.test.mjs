@@ -8,6 +8,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { createRelay } from '../../server/src/relay.mjs';
+import { hydrateSession } from '../../server/src/relay/state.mjs';
 
 const PROVIDERS = [{
     id: 'fake', label: 'Fake', model: 'm1-demo', effort: 'low',
@@ -277,6 +278,92 @@ test('relay state persists across a restart', async (t) => {
         token: session.workerToken,
     });
     assert.equal(messages.body.messages.length, 1);
+});
+
+test('worker cursor is worker-only, bounded and persists across a restart', async (t) => {
+    const dir = stateDir();
+    t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+    const stateFile = path.join(dir, 'relay.json');
+    let relay = await createRelay({ port: 0, providers: PROVIDERS, stateFile });
+    t.after(async () => { if (relay) await relay.close(); });
+    const pairToken = await pair(relay);
+    const session = await createSession(relay, pairToken);
+    const cursorUrl = `${relay.url}/v1/sessions/${session.sessionId}/cursor`;
+
+    assert.equal((await call(cursorUrl, { token: session.clientToken })).status, 403);
+    assert.equal((await call(cursorUrl, { token: relay.managerToken })).status, 403);
+    const initial = await call(cursorUrl, { token: session.workerToken });
+    assert.equal(initial.status, 200);
+    assert.deepEqual(initial.body, { messageSeq: 0, commandSeq: 0 });
+
+    const negative = await call(cursorUrl, {
+        token: session.workerToken, method: 'POST',
+        body: { messageSeq: -1, commandSeq: 0 },
+    });
+    assert.equal(negative.status, 400);
+    const future = await call(cursorUrl, {
+        token: session.workerToken, method: 'POST',
+        body: { messageSeq: 1, commandSeq: 0 },
+    });
+    assert.equal(future.status, 400);
+
+    await call(`${relay.url}/v1/sessions/${session.sessionId}/messages`, {
+        token: session.clientToken, method: 'POST', body: { content: 'hello' },
+    });
+    await call(`${relay.url}/v1/sessions/${session.sessionId}/commands`, {
+        token: session.clientToken, method: 'POST', body: { type: 'stop' },
+    });
+    const accepted = await call(cursorUrl, {
+        token: session.workerToken, method: 'POST',
+        body: { messageSeq: 1, commandSeq: 1 },
+    });
+    assert.equal(accepted.status, 200);
+    assert.deepEqual(accepted.body, { messageSeq: 1, commandSeq: 1 });
+    const regressed = await call(cursorUrl, {
+        token: session.workerToken, method: 'POST',
+        body: { messageSeq: 0, commandSeq: 1 },
+    });
+    assert.equal(regressed.status, 409);
+    assert.equal(regressed.body.error, 'cursor_regressed');
+
+    await relay.close();
+    relay = null;
+    relay = await createRelay({ port: 0, providers: PROVIDERS, stateFile });
+    const persisted = await call(
+        `${relay.url}/v1/sessions/${session.sessionId}/cursor`,
+        { token: session.workerToken },
+    );
+    assert.equal(persisted.status, 200);
+    assert.deepEqual(persisted.body, { messageSeq: 1, commandSeq: 1 });
+});
+
+test('hydrateSession defaults missing worker cursors and rejects invalid ones', () => {
+    const base = {
+        id: 'sess_test',
+        clientToken: 'client',
+        workerToken: 'worker',
+        provider: {},
+        messages: [],
+        events: [],
+        commands: [],
+        seenPermissions: [],
+        eventsById: [],
+    };
+    const old = hydrateSession(base);
+    assert.equal(old.workerMessageSeq, 0);
+    assert.equal(old.workerCommandSeq, 0);
+    assert.throws(
+        () => hydrateSession({ ...base, workerMessageSeq: -1 }),
+        /STATE_FILE_INVALID/,
+    );
+    assert.throws(
+        () => hydrateSession({ ...base, workerCommandSeq: 1.5 }),
+        /STATE_FILE_INVALID/,
+    );
+    assert.throws(
+        () => hydrateSession({ ...base, workerMessageSeq: 1 }),
+        /STATE_FILE_INVALID/,
+    );
 });
 
 test('relay rejects unsafe or corrupt state files', async (t) => {

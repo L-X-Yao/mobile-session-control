@@ -110,6 +110,14 @@ export function loadStateFile(file, key) {
     return validateStateData(parsed);
 }
 
+function cursorValue(raw, field) {
+    if (raw[field] === undefined) return 0;
+    if (!Number.isSafeInteger(raw[field]) || raw[field] < 0) {
+        throw new Error('STATE_FILE_INVALID');
+    }
+    return raw[field];
+}
+
 export function hydrateSession(raw) {
     if (!raw || typeof raw !== 'object' || typeof raw.id !== 'string'
         || typeof raw.clientToken !== 'string' || typeof raw.workerToken !== 'string'
@@ -119,8 +127,23 @@ export function hydrateSession(raw) {
         || !Array.isArray(raw.eventsById)) {
         throw new Error('STATE_FILE_INVALID');
     }
+    const workerMessageSeq = cursorValue(raw, 'workerMessageSeq');
+    const workerCommandSeq = cursorValue(raw, 'workerCommandSeq');
+    const maxMessageSeq = raw.messages.reduce(
+        (max, message) => (Number.isSafeInteger(message?.seq) ? Math.max(max, message.seq) : max),
+        0,
+    );
+    const maxCommandSeq = raw.commands.reduce(
+        (max, command) => (Number.isSafeInteger(command?.seq) ? Math.max(max, command.seq) : max),
+        0,
+    );
+    if (workerMessageSeq > maxMessageSeq || workerCommandSeq > maxCommandSeq) {
+        throw new Error('STATE_FILE_INVALID');
+    }
     return {
         ...raw,
+        workerMessageSeq,
+        workerCommandSeq,
         pendingKind: raw.pendingKind ?? (raw.pendingPermission ? 'permission' : null),
         seenPermissions: new Set(raw.seenPermissions),
         eventsById: new Map(raw.eventsById),

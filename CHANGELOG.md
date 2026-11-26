@@ -13,6 +13,10 @@
   production enablement remains gated.
 - Native service tests cover Stop, close and event replay through the
   service entrypoint with a fake Agent SDK.
+- Relay sessions persist worker message and command cursors. A worker restarted
+  after a service restart resumes after the last acknowledged item instead of
+  replaying earlier user messages; snapshots written before this change load
+  with both cursors at zero.
 - The web provider picker starts on an explicit placeholder and never
   auto-selects the first provider; a session cannot be created until one is
   chosen.
