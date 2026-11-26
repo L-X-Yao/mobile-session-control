@@ -53,6 +53,7 @@ Android parity, iOS-specific packaging.
 | Native takeover in the durable service | Fake SDK and fake `claude agents`: merged Phase 9 + native catalog, stable IDs, active fork and one fake turn | PASS (fake SDK) |
 | Native takeover through a real sandboxed service | 2026-11-25 temporary systemd unit: real DeepSeek seed + resume (`M3-SEED-OK`, `M3-RESUME-OK`), transcript 168,975 -> 226,258 bytes; denied Bash created no file (`M3-APPROVAL-DENIED-OK`), transcript 236,647 bytes | PASS (M3b) |
 | Native real Stop and restart reconnect | 2026-11-26 temporary systemd unit: fork `M3F-FORK-OK`; Stop cancelled a running Bash command and no finished file existed 12 s later; service restart replayed nothing and resumed the same fork; reconnect `M3F-RECONNECT-OK` in the same transcript; close returned 409 | PASS (M3f) |
+| Production native enablement | 2026-11-26 production `msc-relay`: native catalog 12 sessions / 15 active; narrow exact-cwd allow-list; rollback to native-disabled and re-enable exercised | PASS (service/loopback; phone `NO_DATA`) |
 | Backup recovery | Plaintext and encrypted restore drills | PASS |
 | Metrics | Relay metrics endpoint test | PASS |
 | CI matrix | Node 22 and 24, CodeQL, Browser E2E | PASS |

@@ -110,8 +110,10 @@ unit ran a real fork, a Stop with a running Bash command, a service restart and
 a reconnect. Fork returned `M3F-FORK-OK`; Stop cancelled the turn and no
 finished file existed 12 s later; the restart replayed nothing and resumed the
 same fork; reconnect returned `M3F-RECONNECT-OK` in that transcript; close
-returned 409. Phone/ADB, human hands-on and production enablement remain
-`NO_DATA`.
+returned 409. Production native mode was then enabled on a personal host with
+an exact-cwd allow-list; the service reported 12 native sessions / 15 active.
+Phone/Tailscale verification, human hands-on and a production 24-hour run
+remain `NO_DATA`.
 
 ## Boundaries
 
