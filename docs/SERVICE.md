@@ -189,15 +189,25 @@ The service process reads the real `~/.claude`; the worker writes resumed
 transcripts there. Native workers run with a private temporary `HOME` and
 `CLAUDE_CONFIG_DIR=%h/.claude`. The observed `.claude.json` is written inside
 that config dir, not the HOME root; the temporary HOME isolates other HOME
-writes. Under the systemd template, keep `ProtectHome=read-only` and add
-`ReadWritePaths=%h/.claude` plus each project root native tools may edit (plus
-the state directory). The exact write set was not measured in a systemd
-sandbox; verify it before enabling native mode.
+writes. Under the systemd template, keep `ProtectHome=read-only` and add the state
+directory, `%h/.claude`, and the initial project allow-list
+`%h/project /mnt/d/lsc`:
 
-`ProtectSystem=strict` also makes the repository read-only to the service.
-Native tools that edit project files will fail unless their roots are in
-`ReadWritePaths`; a separate native unit with a less strict policy is the
-alternative. Offline code does not resolve the unit policy.
+```ini
+ReadWritePaths=@STATE_DIR@ %h/.claude %h/project /mnt/d/lsc
+```
+
+`%h/project` includes every project under the user's project directory,
+including this repository; `/mnt/d/lsc` is the known second project root. This
+is deliberately narrower than the whole HOME but broad; replace it with
+specific project roots if native tools must not edit the control repository or
+unrelated projects. The exact write set is still to be measured in a real
+sandbox before enabling native mode in production.
+
+`ProtectSystem=strict` makes paths outside `ReadWritePaths` read-only. Native
+tools that edit project files fail unless their roots are listed; a separate
+native unit with a less strict policy is the alternative. Offline code does
+not resolve or prove the unit policy.
 
 Rollback: stop the service, remove the `native` block from `service.json`, and
 remove the native-only `ReadWritePaths` entries (`%h/.claude` and the project

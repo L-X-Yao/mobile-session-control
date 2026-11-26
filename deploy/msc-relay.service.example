@@ -5,7 +5,6 @@
 #   @REPO@       absolute repository path
 #   @CONFIG@     absolute private service config path (mode 0600)
 #   @STATE_DIR@  writable private directory for state, key, pairing and logs
-#   @PROJECT_ROOT@  a project directory native tools may edit (optional)
 #
 # Phase 9 rejects a real-mode baseDir under ~/.local, ~/.config, ~/.cache,
 # ~/.ssh or ~/.claude. For real mode use a separate writable root (for example
@@ -14,17 +13,22 @@
 #
 # With the optional native section, the relay also needs write access to the
 # real Claude session store for resumed transcripts. Keep ProtectHome=read-only
-# and add the session store plus the project roots native tools may edit:
-#   ReadWritePaths=@STATE_DIR@ %h/.claude @PROJECT_ROOT@
+# and add the session store plus the initial project allow-list:
+#   ReadWritePaths=@STATE_DIR@ %h/.claude %h/project /mnt/d/lsc
+# %h/project includes every project under the user's project directory,
+# including this repository; /mnt/d/lsc is the known second project root.
+# Narrow the list if that scope is not acceptable.
 # Native workers run with a private temporary HOME and
 # CLAUDE_CONFIG_DIR=%h/.claude. The observed .claude.json is written inside
 # that config dir, not the HOME root; the temporary HOME isolates other HOME
-# writes. Verify the exact write set in a real sandbox before enabling it.
+# writes. The write set is still to be measured in a real sandbox (P2b) before
+# enabling native mode in production.
 #
-# ProtectSystem=strict makes the repository read-only to the service. Native
-# Claude tools that edit project files will fail under this unit; a reviewed
-# unit change (extra project roots or a less strict native unit) is required
-# before claiming real native takeover.
+# ProtectSystem=strict makes paths outside ReadWritePaths read-only. With the
+# native allow-list above, %h/project (including this repository) is writable;
+# remove it or list narrower project roots if the service must not edit the
+# control repository. A reviewed unit change is required before claiming real
+# native takeover.
 #
 # Native workers take ANTHROPIC_* from the service environment. Put those
 # values in a mode-0600 EnvironmentFile= referenced by the unit, not a shell
