@@ -190,18 +190,17 @@ transcripts there. Native workers run with a private temporary `HOME` and
 `CLAUDE_CONFIG_DIR=%h/.claude`. The observed `.claude.json` is written inside
 that config dir, not the HOME root; the temporary HOME isolates other HOME
 writes. Under the systemd template, keep `ProtectHome=read-only` and add the state
-directory, `%h/.claude`, and the initial project allow-list
-`%h/project /mnt/d/lsc`:
+directory, `%h/.claude`, and the exact cwd of each native session that needs
+file edits:
 
 ```ini
-ReadWritePaths=@STATE_DIR@ %h/.claude %h/project /mnt/d/lsc
+ReadWritePaths=@STATE_DIR@ %h/.claude @PROJECT_ROOT@
 ```
 
-`%h/project` includes every project under the user's project directory,
-including this repository; `/mnt/d/lsc` is the known second project root. This
-is deliberately narrower than the whole HOME but broad; replace it with
-specific project roots if native tools must not edit the control repository or
-unrelated projects. The exact write set is still to be measured in a real
+Repeat `@PROJECT_ROOT@` for each root. Do not use the whole project tree or a
+user home: list only session cwds from the native catalog. A cwd outside the
+list still chats; its file edits fail closed. WSL drvfs roots need a real
+namespace test first. The exact write set is still to be measured in a real
 sandbox before enabling native mode in production.
 
 `ProtectSystem=strict` makes paths outside `ReadWritePaths` read-only. Native
