@@ -60,7 +60,9 @@ quota.
 | Push / packaging | UnifiedPush via self-hosted ntfy; Play Store/TWA not implemented |
 
 This is a personal-use build. Real-phone and real-provider evidence is recorded
-outside the repository; the continuous 24-hour claim remains `NO_DATA`.
+outside the repository; the continuous 24-hour claim remains `NO_DATA`. The
+source tree is at version `0.2.0` in preparation; no `v0.2.0` tag or release
+exists, and the latest published Android artifacts remain `v0.1.6`.
 
 This project does not bundle upstream Happy code; see `NOTICE`. The Claude Agent
 SDK and the Claude Code executable are separately licensed external

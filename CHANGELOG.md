@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-11-26
 
 - A real-mode service can add native Claude Code sessions through an optional
   `native` object. The catalog refreshes in the background, uses stable hashed
@@ -8,7 +8,11 @@
   workers use a private temporary HOME and `CLAUDE_CONFIG_DIR`, so the real
   HOME root stays read-only. Native workers load only user settings and set
   `strictMcpConfig: true`, so project settings, skills, hooks, MCP and project
-  `CLAUDE.md` cannot run outside the phone approval gate.
+  `CLAUDE.md` cannot run outside the phone approval gate. A real sandboxed
+  service completed a seed, a same-session resume and a denied Bash request;
+  production enablement remains gated.
+- Native service tests cover Stop, close and event replay through the
+  service entrypoint with a fake Agent SDK.
 - The web provider picker starts on an explicit placeholder and never
   auto-selects the first provider; a session cannot be created until one is
   chosen.

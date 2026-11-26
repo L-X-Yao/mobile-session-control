@@ -75,3 +75,7 @@ Android parity, iOS-specific packaging.
 A production release requires: green CI, CodeQL, Browser E2E and Scorecard; a
 restore drill on the current backup; a clean `npm run precommit`; no open
 high/medium review finding; and an explicit user approval for the tag and push.
+
+A `v0.2.0` tag additionally requires M3c (real fork, Stop and close/reconnect),
+a 24-hour production soak and human hands-on checks. The source version may be
+`0.2.0` before those are complete, but no tag or release is created.
