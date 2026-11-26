@@ -136,7 +136,10 @@ manager-authenticated rows additionally include `workerToken`.
 
 Commands are client-authored, stored with a sequence number, and consumed by the
 Phase 6/7 host worker (`packages/cli/src/session/host-worker.mjs`), which polls
-`GET /v1/sessions/:id/commands?after=N`. The worker acknowledges consumed
+`GET /v1/sessions/:id/commands?after=N`. In native mode the worker retires the
+SDK host process group after a `cancelled` turn from `stop`, so a tool
+subprocess cannot outlive Stop; the manager restarts the worker and resumes
+through the cursor and native-session binding. The worker acknowledges consumed
 messages and commands through `POST /v1/sessions/:id/cursor`; the relay stores
 both cursors in the session snapshot. A worker restarted against the same
 session starts after the acknowledged sequence instead of replaying earlier

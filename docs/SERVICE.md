@@ -151,7 +151,9 @@ private. Worker message and command cursors are stored in the same state
 snapshot, so a restarted worker resumes after the last acknowledged item
 instead of replaying earlier user messages. The forked native session ID is
 also stored, write-once, so a restart resumes that fork instead of forking the
-active source again.
+active source again. Native Stop retires the SDK host process group after a
+cancelled turn; the manager restarts the worker and resumes the same session,
+so a Bash tool child cannot outlive Stop.
 
 If `claude agents --json` fails at startup, the service refuses to start: it
 cannot prove which sessions are live. A later refresh failure keeps the last

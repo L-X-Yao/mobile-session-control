@@ -2,6 +2,7 @@
 // Controllable fake session host for Phase 6 tests.
 // It speaks the JSONL protocol in docs/SESSION-HOST-PROTOCOL.md.
 import crypto from 'node:crypto';
+import { spawn } from 'node:child_process';
 import readline from 'node:readline';
 
 const rl = readline.createInterface({ input: process.stdin });
@@ -89,6 +90,17 @@ function handleUser(content) {
     if (content.includes('reuse')) {
         current = { type: 'permission', requestId: 'perm_reused' };
         send({ type: 'permission-request', requestId: 'perm_reused', tool: 'Bash' });
+        return;
+    }
+    if (content.includes('spawn')) {
+        current = { type: 'wait' };
+        const file = process.env.MSC_FAKE_SPAWN_FILE;
+        if (file) {
+            spawn(process.execPath, ['-e',
+                `setTimeout(() => require('node:fs').writeFileSync(${JSON.stringify(file)}, 'x'), 2000)`,
+            ], { stdio: 'ignore', env: process.env });
+        }
+        send({ type: 'assistant-message', content: 'SPAWNED' });
         return;
     }
     if (content.includes('wait')) {

@@ -20,6 +20,10 @@
 - A native worker reports the forked SDK session ID, and the relay stores it as
   a write-once binding. A restarted worker resumes that exact fork instead of
   forking the active source again; client session metadata does not expose it.
+- Native Stop now retires the SDK host process group after a cancelled turn.
+  An SDK interrupt can end the stream while a Bash tool child keeps running;
+  closing the group prevents the command from outliving Stop. The manager
+  restarts the worker and resumes through the persisted cursor and fork binding.
 - The web provider picker starts on an explicit placeholder and never
   auto-selects the first provider; a session cannot be created until one is
   chosen.

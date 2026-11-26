@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createSessionHost } from '../src/session/host.mjs';
@@ -431,6 +433,48 @@ test('host worker resumes from the persisted cursor after a restart', async (t) 
     assert.equal(events.filter((event) => event.type === 'turn-end').length, 2);
     assert.equal(events.filter((event) => event.content === 'FAKE-OK:hello').length, 1);
     assert.equal(events.filter((event) => event.content === 'FAKE-OK:second').length, 1);
+});
+
+test('native Stop retires the host and kills a surviving tool process', async (t) => {
+    const relay = await createRelay({ port: 0 });
+    let worker = null;
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'msc-stop-retire-'));
+    const marker = path.join(dir, 'survived');
+    t.after(async () => {
+        if (worker) await worker.stop();
+        await relay.close();
+        fs.rmSync(dir, { recursive: true, force: true });
+    });
+    const { token: pairToken } = await pair(relay);
+    const session = await createSession(relay, pairToken);
+    worker = await startHostWorker({
+        relayUrl: relay.url,
+        token: session.workerToken,
+        sessionId: session.sessionId,
+        command: process.execPath,
+        args: [FAKE_HOST],
+        env: { ...ENV, CLAUDE_NATIVE: '1', MSC_FAKE_SPAWN_FILE: marker },
+        pollMs: 10,
+    });
+    const sessionUrl = `${relay.url}/v1/sessions/${session.sessionId}`;
+
+    await requestJson(`${sessionUrl}/messages`, {
+        token: session.clientToken, method: 'POST', body: { content: 'spawn' },
+    });
+    await waitForEvents(
+        relay, session.clientToken, session.sessionId,
+        (items) => items.some((event) => event.content === 'SPAWNED'),
+    );
+    await requestJson(`${sessionUrl}/commands`, {
+        token: session.clientToken, method: 'POST', body: { type: 'stop' },
+    });
+    await waitForEvents(
+        relay, session.clientToken, session.sessionId,
+        (items) => items.some((event) => event.type === 'turn-end' && event.status === 'cancelled'),
+    );
+    await waitFor(() => worker.stopped === true, 2000);
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+    assert.equal(fs.existsSync(marker), false);
 });
 
 test('host worker stops an idle host when the session closes', async (t) => {

@@ -108,7 +108,9 @@ export async function startHostWorker({
     let stopping = false;
     let turnActive = false;
     let turnEndPending = false;
+    let retireRequested = false;
     let cleanupError = null;
+    const retireOnStop = env?.CLAUDE_NATIVE === '1';
     let lastMessageSeq = 0;
     let ackMessageSeq = 0;
     let lastCommandSeq = 0;
@@ -249,6 +251,22 @@ export async function startHostWorker({
                 turnActive = false;
                 turnEndPending = false;
                 stopping = false;
+                if (retireOnStop && retireRequested && event.status !== 'completed') {
+                    retireRequested = false;
+                    stopping = true;
+                    // SDK interrupt can end the stream while a Bash tool child
+                    // keeps running. Close the host group so no tool outlives
+                    // the cancelled turn; the manager restarts and resumes.
+                    await flushCursor();
+                    setImmediate(() => {
+                        if (stopped) return;
+                        stopped = true;
+                        controller.abort();
+                        closeHost();
+                    });
+                    return;
+                }
+                retireRequested = false;
                 drainQueue();
             }
         },
@@ -308,7 +326,10 @@ export async function startHostWorker({
                         ackMessageSeq = lastMessageSeq;
                         cursorDirty = true;
                         stopping = turnActive || turnEndPending;
-                        if (turnActive) host.stop();
+                        if (turnActive) {
+                            retireRequested = retireOnStop;
+                            host.stop();
+                        }
                     }
                 } catch {
                     // A stale/invalid decision is consumed; the host remains safe.
