@@ -185,6 +185,10 @@ function normalizeEvent(event) {
             if (typeof event.content !== 'string' || event.content.length === 0
                 || event.content.length > MAX_MESSAGE_CHARS) return null;
             return { type: 'assistant-message', content: event.content };
+        case 'native-session':
+            if (typeof event.sessionId !== 'string' || event.sessionId.length === 0
+                || event.sessionId.length > 200) return null;
+            return { type: 'native-session', sessionId: event.sessionId };
         case 'turn-end': {
             if (!['completed', 'failed', 'cancelled'].includes(event.status)) return null;
             const normalized = { type: 'turn-end', status: event.status };

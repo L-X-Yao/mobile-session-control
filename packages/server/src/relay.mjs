@@ -767,7 +767,10 @@ export async function createRelay({
                     lastMessageSeq: session.messages.at(-1)?.seq ?? 0,
                     lastEventSeq: session.events.at(-1)?.seq ?? 0,
                 };
-                if (isManager) body.workerToken = session.workerToken;
+                if (isManager) {
+                    body.workerToken = session.workerToken;
+                    body.nativeSessionId = session.nativeSessionId ?? null;
+                }
                 return body;
             });
             sendJson(res, 200, { sessions: list, tokenTtlMs });
@@ -813,6 +816,7 @@ export async function createRelay({
                 nextCommandSeq: 1,
                 workerMessageSeq: 0,
                 workerCommandSeq: 0,
+                nativeSessionId: null,
             };
             sessions.set(session.id, session);
             tokens.set(session.clientToken, {
@@ -910,6 +914,29 @@ export async function createRelay({
                 });
                 return;
             }
+        }
+
+        if (parts.length === 4 && parts[3] === 'native-session' && req.method === 'POST') {
+            if (!authorizeSession('worker')) return;
+            if (typeof session.provider?.id !== 'string'
+                || !session.provider.id.startsWith('native-')) {
+                sendJson(res, 400, { error: 'not_native' });
+                return;
+            }
+            const body = await readBodyOrRespond(req, res);
+            if (!body) return;
+            if (!isText(body.sessionId, 200)) {
+                sendJson(res, 400, { error: 'invalid_native_session' });
+                return;
+            }
+            if (session.nativeSessionId && session.nativeSessionId !== body.sessionId) {
+                sendJson(res, 409, { error: 'native_session_locked' });
+                return;
+            }
+            session.nativeSessionId = body.sessionId;
+            persist();
+            sendJson(res, 200, { nativeSessionId: session.nativeSessionId });
+            return;
         }
 
         if (parts.length === 4 && parts[3] === 'close' && req.method === 'POST') {

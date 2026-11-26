@@ -17,6 +17,9 @@
   after a service restart resumes after the last acknowledged item instead of
   replaying earlier user messages; snapshots written before this change load
   with both cursors at zero.
+- A native worker reports the forked SDK session ID, and the relay stores it as
+  a write-once binding. A restarted worker resumes that exact fork instead of
+  forking the active source again; client session metadata does not expose it.
 - The web provider picker starts on an explicit placeholder and never
   auto-selects the first provider; a session cannot be created until one is
   chosen.

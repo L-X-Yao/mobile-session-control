@@ -19,7 +19,10 @@ const MAX_OPTION_DESCRIPTION_CHARS = 500;
 const MAX_QUESTIONS = 4;
 const MAX_OPTIONS = 4;
 const MAX_ANSWER_CHARS = 200;
+const MAX_NATIVE_SESSION_ID_CHARS = 200;
 const PERMISSION_PREFIX = crypto.randomBytes(6).toString('hex');
+const NATIVE_MODE = process.env.CLAUDE_NATIVE === '1';
+let reportedNativeSessionId = null;
 
 // The SDK and the Claude Code CLI may log. Keep stdout reserved for protocol.
 for (const name of ['log', 'info', 'debug']) {
@@ -331,6 +334,13 @@ async function consume(handle) {
     try {
         for await (const message of handle) {
             if (shuttingDown) break;
+            const sessionId = typeof message?.session_id === 'string' ? message.session_id : null;
+            if (NATIVE_MODE && sessionId && sessionId.length <= MAX_NATIVE_SESSION_ID_CHARS
+                && sessionId !== reportedNativeSessionId
+                && sessionId !== process.env.CLAUDE_RESUME_SESSION_ID) {
+                reportedNativeSessionId = sessionId;
+                write({ type: 'native-session', sessionId });
+            }
             if (message?.type === 'assistant') {
                 for (const text of assistantText(message)) emitAssistantText(text);
                 continue;

@@ -120,6 +120,23 @@ export async function startHostWorker({
         { token, method: 'POST', body, timeoutMs, signal },
     );
 
+    async function postNativeSession(nativeSessionId) {
+        let lastError = null;
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+            try {
+                await requestJson(`${relayBase}/v1/sessions/${sessionId}/native-session`, {
+                    token, method: 'POST', body: { sessionId: nativeSessionId }, timeoutMs, signal,
+                });
+                return;
+            } catch (error) {
+                lastError = error;
+                if (error.status === 400 || error.status === 409) throw error;
+                if (attempt < 2) await sleep(50 * (attempt + 1), signal);
+            }
+        }
+        throw lastError;
+    }
+
     async function postEventWithRetry(body) {
         let lastError = null;
         for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -199,6 +216,17 @@ export async function startHostWorker({
                 return;
             }
             if (event.type === 'protocol-error') return;
+            if (event.type === 'native-session') {
+                try {
+                    await postNativeSession(event.sessionId);
+                } catch {
+                    failed = true;
+                    stopped = true;
+                    controller.abort();
+                    closeHost();
+                }
+                return;
+            }
             if (event.type === 'turn-end') turnEndPending = true;
             const body = hostEventToRelay(event);
             if (!body) return;

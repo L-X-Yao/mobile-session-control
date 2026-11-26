@@ -149,7 +149,9 @@ native session is outside the recent list. It grows as sessions are seen; it is
 small, but deleting it resets old ID resolution. Keep the state directory
 private. Worker message and command cursors are stored in the same state
 snapshot, so a restarted worker resumes after the last acknowledged item
-instead of replaying earlier user messages.
+instead of replaying earlier user messages. The forked native session ID is
+also stored, write-once, so a restart resumes that fork instead of forking the
+active source again.
 
 If `claude agents --json` fails at startup, the service refuses to start: it
 cannot prove which sessions are live. A later refresh failure keeps the last

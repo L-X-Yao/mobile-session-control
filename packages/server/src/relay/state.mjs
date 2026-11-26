@@ -140,10 +140,16 @@ export function hydrateSession(raw) {
     if (workerMessageSeq > maxMessageSeq || workerCommandSeq > maxCommandSeq) {
         throw new Error('STATE_FILE_INVALID');
     }
+    if (raw.nativeSessionId !== undefined && raw.nativeSessionId !== null
+        && (typeof raw.nativeSessionId !== 'string' || raw.nativeSessionId.length === 0
+            || raw.nativeSessionId.length > 200)) {
+        throw new Error('STATE_FILE_INVALID');
+    }
     return {
         ...raw,
         workerMessageSeq,
         workerCommandSeq,
+        nativeSessionId: raw.nativeSessionId ?? null,
         pendingKind: raw.pendingKind ?? (raw.pendingPermission ? 'permission' : null),
         seenPermissions: new Set(raw.seenPermissions),
         eventsById: new Map(raw.eventsById),

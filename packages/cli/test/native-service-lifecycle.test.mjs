@@ -158,7 +158,9 @@ async function startService(t) {
     assert.equal(providers.status, 200, output);
     const native = providers.body.providers.find((item) => item.id.startsWith('native-'));
     assert.ok(native, output);
-    const service = { url: pairing.url, token, native, output: () => output };
+    const service = {
+        url: pairing.url, token, native, stateDir, output: () => output,
+    };
     service.restart = async () => {
         const previousUrl = service.url;
         if (child.exitCode === null) {
@@ -270,7 +272,7 @@ test('native service Stop interrupts a turn and keeps the worker usable', async 
     );
 });
 
-test('native service resumes from the persisted cursor after a restart', async (t) => {
+test('native service resumes the pinned fork after a restart', async (t) => {
     const service = await startService(t);
     const session = await createSession(service);
 
@@ -280,6 +282,17 @@ test('native service resumes from the persisted cursor after a restart', async (
     );
     assert.equal(first.events.filter((event) => event.content === 'FAKE-SDK-OK:hello').length, 1);
     const lastSeq = first.events.at(-1).seq;
+    await waitFor(() => {
+        try {
+            const state = JSON.parse(
+                fs.readFileSync(path.join(service.stateDir, 'state.json'), 'utf8'),
+            );
+            return state.sessions.find((item) => item.id === session.id)?.nativeSessionId
+                === `${SESSION_ID}-fork`;
+        } catch {
+            return false;
+        }
+    });
 
     await service.restart();
     await new Promise((resolve) => setTimeout(resolve, 300));
@@ -287,12 +300,16 @@ test('native service resumes from the persisted cursor after a restart', async (
     assert.deepEqual(afterRestart.events, []);
     assert.equal(afterRestart.hasMore, false);
 
-    await send(service, session, 'hello2');
+    await send(service, session, 'nativeinfo');
     const second = await waitForEvent(
         service, session, (event) => event.type === 'turn-end' && event.status === 'completed'
             && event.seq > lastSeq,
     );
-    assert.equal(second.events.filter((event) => event.content === 'FAKE-SDK-OK:hello2').length, 1);
+    assert.equal(
+        second.events.filter((event) => event.content === 'FAKE-SDK-NATIVE:'
+            + `${SESSION_ID}-fork:persist:user:strict-mcp:same`).length,
+        1,
+    );
     assert.equal(
         second.events.filter((event) => event.content === 'FAKE-SDK-OK:hello').length,
         1,

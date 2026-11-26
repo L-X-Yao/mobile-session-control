@@ -87,6 +87,7 @@ message/event history readable by its client and worker tokens until eviction.
 | GET | `/v1/sessions/:id/commands?after=N` | worker | none | `{ closed, commands: [...] }` |
 | GET | `/v1/sessions/:id/cursor` | worker | none | `{ messageSeq, commandSeq }` |
 | POST | `/v1/sessions/:id/cursor` | worker | `{ messageSeq, commandSeq }` | `{ messageSeq, commandSeq }`; monotonic and bounded by observed sequences |
+| POST | `/v1/sessions/:id/native-session` | worker | `{ sessionId }` | `{ nativeSessionId }`; native provider IDs only, write-once |
 | POST | `/v1/sessions/:id/close` | client | none | `{ sessionId, closed, closedAt }` |
 
 Pagination: `after=N` is exclusive; responses contain entries with `seq > N`.
@@ -141,8 +142,15 @@ both cursors in the session snapshot. A worker restarted against the same
 session starts after the acknowledged sequence instead of replaying earlier
 user messages. Cursors may only advance and may not exceed the highest observed
 message or command sequence; a lower value returns `409 cursor_regressed`.
-Older state snapshots without the fields load with both cursors at zero. The
-older M1 fake worker
+Older state snapshots without the fields load with both cursors at zero.
+
+A native worker reports the SDK session ID it is actually using through
+`POST /v1/sessions/:id/native-session`. The relay stores it with the session
+and includes it in manager-authenticated session rows; after a restart the
+worker resumes that exact native session instead of forking the active source
+again. The binding is write-once: a different ID returns `409
+native_session_locked`. Client session metadata does not expose it. The older
+M1 fake worker
 (`packages/cli/src/m1/worker.mjs`) does not poll commands; in the M1 demo slices
 `stop` and `permission-decision` are stored but have no effect. Only one
 permission or question request may be pending; a decision or answer must match
@@ -181,7 +189,8 @@ again. `allowText` defaults to true for questions created from the Claude Code
 - M1 separates pair, client, worker and local manager tokens. The pair token
   cannot read session data or worker tokens; the worker token cannot create
   sessions or post user messages; the client token cannot read the worker
-  command inbox, read or advance the worker cursor, or post assistant events.
+  command inbox, read or advance the worker cursor, set the native session
+  binding, or post assistant events.
   Both client and worker may read the message log; the Web client replays user
   messages from it on reopen. The manager token is process-local and must never
   be sent to the Web client; relay startup rejects a pair/manager token

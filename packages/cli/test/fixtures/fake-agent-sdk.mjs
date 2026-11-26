@@ -49,7 +49,7 @@ export function query({ prompt, options = {} }) {
         gate = null;
     };
 
-    async function* run() {
+    async function* rawRun() {
         yield { type: 'system', subtype: 'init', capabilities: [] };
         for await (const message of prompt) {
             if (closed) return;
@@ -184,6 +184,15 @@ export function query({ prompt, options = {} }) {
         }
     }
 
+    const resume = typeof options.resume === 'string' ? options.resume : '';
+    const sessionId = options.forkSession === true
+        ? `${resume || 'new-session'}-fork`
+        : (resume || 'new-session');
+    async function* run() {
+        for await (const message of rawRun()) {
+            yield { ...message, session_id: sessionId };
+        }
+    }
     const generator = run();
     return {
         [Symbol.asyncIterator]() { return generator; },

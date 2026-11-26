@@ -40,11 +40,13 @@ async function pair(relay) {
     return response.body.token;
 }
 
-async function createSession(relay, pairToken) {
+async function createSession(relay, pairToken, provider = {
+    id: 'fake', model: 'm1-demo', effort: 'low', transport: 'openai-compatible-sse',
+}) {
     const created = await call(`${relay.url}/v1/sessions`, {
         token: pairToken,
         method: 'POST',
-        body: { provider: { id: 'fake', model: 'm1-demo', effort: 'low', transport: 'openai-compatible-sse' } },
+        body: { provider },
     });
     assert.equal(created.status, 201);
     const list = await call(`${relay.url}/v1/sessions`, { token: relay.managerToken });
@@ -335,6 +337,71 @@ test('worker cursor is worker-only, bounded and persists across a restart', asyn
     );
     assert.equal(persisted.status, 200);
     assert.deepEqual(persisted.body, { messageSeq: 1, commandSeq: 1 });
+});
+
+test('native session binding is worker-only, write-once and persisted', async (t) => {
+    const dir = stateDir();
+    t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+    const stateFile = path.join(dir, 'relay.json');
+    let relay = await createRelay({ port: 0, providers: PROVIDERS, stateFile });
+    t.after(async () => { if (relay) await relay.close(); });
+    const pairToken = await pair(relay);
+    const nativeProvider = {
+        id: 'native-test', model: 'native', effort: 'low', transport: 'anthropic-compatible-sse',
+    };
+    const native = await createSession(relay, pairToken, nativeProvider);
+    const url = `${relay.url}/v1/sessions/${native.sessionId}/native-session`;
+
+    assert.equal((await call(url, {
+        token: native.clientToken, method: 'POST', body: { sessionId: 'fork-1' },
+    })).status, 403);
+    assert.equal((await call(url, {
+        token: relay.managerToken, method: 'POST', body: { sessionId: 'fork-1' },
+    })).status, 403);
+    assert.equal((await call(url, {
+        token: native.workerToken, method: 'POST', body: { sessionId: '' },
+    })).status, 400);
+    const accepted = await call(url, {
+        token: native.workerToken, method: 'POST', body: { sessionId: 'fork-1' },
+    });
+    assert.equal(accepted.status, 200);
+    assert.deepEqual(accepted.body, { nativeSessionId: 'fork-1' });
+    assert.equal((await call(url, {
+        token: native.workerToken, method: 'POST', body: { sessionId: 'fork-1' },
+    })).status, 200);
+    assert.equal((await call(url, {
+        token: native.workerToken, method: 'POST', body: { sessionId: 'fork-2' },
+    })).status, 409);
+
+    const fake = await createSession(relay, pairToken);
+    assert.equal((await call(`${relay.url}/v1/sessions/${fake.sessionId}/native-session`, {
+        token: fake.workerToken, method: 'POST', body: { sessionId: 'fork-1' },
+    })).status, 400);
+
+    let list = await call(`${relay.url}/v1/sessions`, { token: relay.managerToken });
+    assert.equal(
+        list.body.sessions.find((item) => item.sessionId === native.sessionId).nativeSessionId,
+        'fork-1',
+    );
+    const pairList = await call(`${relay.url}/v1/sessions`, { token: pairToken });
+    assert.equal(
+        pairList.body.sessions.find((item) => item.sessionId === native.sessionId).nativeSessionId,
+        undefined,
+    );
+    const clientView = await call(`${relay.url}/v1/sessions/${native.sessionId}`, {
+        token: native.clientToken,
+    });
+    assert.equal(clientView.status, 200);
+    assert.equal(clientView.body.nativeSessionId, undefined);
+
+    await relay.close();
+    relay = null;
+    relay = await createRelay({ port: 0, providers: PROVIDERS, stateFile });
+    list = await call(`${relay.url}/v1/sessions`, { token: relay.managerToken });
+    assert.equal(
+        list.body.sessions.find((item) => item.sessionId === native.sessionId).nativeSessionId,
+        'fork-1',
+    );
 });
 
 test('hydrateSession defaults missing worker cursors and rejects invalid ones', () => {

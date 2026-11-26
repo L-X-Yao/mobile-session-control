@@ -140,6 +140,10 @@ export async function createNativeRuntime({
         resolveHost: async ({ session }) => {
             const entry = registry.get(session?.provider?.id);
             if (!entry) return null;
+            const pinned = typeof session?.nativeSessionId === 'string'
+                && session.nativeSessionId.length > 0
+                && session.nativeSessionId.length <= 200
+                ? session.nativeSessionId : null;
             // A stale active list could resume a live session in place. Refuse
             // new hosts until a refresh succeeds again, and re-check the live
             // list at launch so a session started in a terminal is forked.
@@ -165,8 +169,11 @@ export async function createNativeRuntime({
                 CLAUDE_AGENT_SDK_PATH: sdkPath,
                 ...(claudePath ? { CLAUDE_CODE_PATH: claudePath } : {}),
                 CLAUDE_NATIVE: '1',
-                CLAUDE_RESUME_SESSION_ID: entry.sessionId,
-                ...(entry.active ? { CLAUDE_FORK_SESSION: '1' } : {}),
+                // Once the worker has reported a forked session ID, resume that
+                // exact session after a restart. Re-forking the active source
+                // would silently move the relay conversation to a new session.
+                CLAUDE_RESUME_SESSION_ID: pinned || entry.sessionId,
+                ...(!pinned && entry.active ? { CLAUDE_FORK_SESSION: '1' } : {}),
             };
             return {
                 command: process.execPath,

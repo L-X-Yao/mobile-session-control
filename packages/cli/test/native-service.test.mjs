@@ -446,6 +446,32 @@ test('service merges a native session and completes a fake turn', async (t) => {
     assert.equal(code, 0, output);
 });
 
+test('resolveHost resumes a pinned fork instead of forking the active source', async (t) => {
+    const dir = tempDir(t);
+    const home = path.join(dir, 'home');
+    fs.mkdirSync(home, { mode: 0o700 });
+    const agents = agentsScript(dir, `echo '[{"sessionId":"${SESSION_ID}","state":"blocked"}]'`);
+    const runtime = await createNativeRuntime({
+        sdkPath: FAKE_SDK,
+        claudePath: agents,
+        home,
+        limit: 1,
+        refreshMs: 60_000,
+    });
+    t.after(() => runtime.close());
+    const id = runtime.providers()[0].id;
+
+    const pinned = await runtime.resolveHost({
+        session: { provider: { id }, nativeSessionId: `${SESSION_ID}-fork` },
+    });
+    assert.equal(pinned.env.CLAUDE_RESUME_SESSION_ID, `${SESSION_ID}-fork`);
+    assert.equal(pinned.env.CLAUDE_FORK_SESSION, undefined);
+
+    const fresh = await runtime.resolveHost({ session: { provider: { id } } });
+    assert.equal(fresh.env.CLAUDE_RESUME_SESSION_ID, SESSION_ID);
+    assert.equal(fresh.env.CLAUDE_FORK_SESSION, '1');
+});
+
 test('the registry keeps an old provider id resolvable after restart', async (t) => {
     const dir = tempDir(t);
     const home = path.join(dir, 'home');
