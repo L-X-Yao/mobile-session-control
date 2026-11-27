@@ -30,7 +30,7 @@ jobs:
       # Temporary: v2.6.0's GHCR index references a missing platform manifest
       # (sha256:7a627...), so the runner cannot pull the image. Pin the previous
       # release until the upstream image is repaired.
-      - uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e # v2.5.0
+      - uses: ossf/scorecard-action@23f22cd43608bae7a1f1fa2603d7314dee9538a5 # v2.6.0
         with:
           results_file: results.sarif
           results_format: sarif
