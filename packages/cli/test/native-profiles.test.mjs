@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {
     matchProfilesByModel,
+    profileProviderEnv,
     validateNativeProfiles,
 } from '../src/native/profiles.mjs';
 import { readLastAssistantModel } from '../src/native/model.mjs';
@@ -53,10 +54,32 @@ test('valid profiles normalize ids, paths and lowercase model prefixes', (t) => 
     assert.equal(profiles[0].configDir, raw.configDir);
     assert.equal(profiles[0].baseUrl, raw.baseUrl);
     assert.deepEqual(profiles[0].match, ['deepseek-']);
+    assert.equal(profiles[0].keyEnv, 'ANTHROPIC_AUTH_TOKEN');
     const suffixed = validateNativeProfiles(
         [profile(dir, { defaultModel: 'deepseek-flash[1m]' })], { home },
     );
     assert.equal(suffixed[0].defaultModel, 'deepseek-flash[1m]');
+});
+
+test('a profile selects the key environment and defaults to the bearer token', (t) => {
+    const dir = tempDir(t);
+    const home = configDir(dir, 'home');
+    const profiles = validateNativeProfiles([
+        profile(dir, { keyEnv: 'ANTHROPIC_API_KEY' }),
+    ], { home });
+    assert.equal(profiles[0].keyEnv, 'ANTHROPIC_API_KEY');
+    assert.deepEqual(
+        profileProviderEnv(profiles[0], 'secret-value'),
+        {
+            ANTHROPIC_BASE_URL: 'https://api.deepseek.com/anthropic',
+            ANTHROPIC_API_KEY: 'secret-value',
+            ANTHROPIC_MODEL: 'deepseek-flash',
+        },
+    );
+    assert.throws(
+        () => validateNativeProfiles([profile(dir, { keyEnv: 'ANTHROPIC_BASE_URL' })], { home }),
+        /SERVICE_NATIVE_PROFILE_INVALID/,
+    );
 });
 
 test('a missing configDir defaults to home/.claude', (t) => {

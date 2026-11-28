@@ -5,8 +5,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const PROFILE_KEYS = new Set([
-    'id', 'label', 'configDir', 'baseUrl', 'keyFile', 'defaultModel', 'match', 'env',
+    'id', 'label', 'configDir', 'baseUrl', 'keyFile', 'keyEnv', 'defaultModel',
+    'match', 'env',
 ]);
+const KEY_ENVS = new Set(['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_API_KEY']);
 const ID_RE = /^[a-z][a-z0-9-]{1,31}$/;
 // Model IDs may carry a context suffix such as `deepseek-flash[1m]`.
 const MODEL_RE = /^[A-Za-z0-9][A-Za-z0-9._:/\[\]-]{0,127}$/;
@@ -164,11 +166,14 @@ export function validateNativeProfiles(value, { home } = {}) {
             baseUrl: raw.baseUrl === undefined || raw.baseUrl === null ? null : baseUrl(raw.baseUrl),
             keyFile: raw.keyFile === undefined || raw.keyFile === null
                 ? null : absoluteKeyFile(raw.keyFile),
+            keyEnv: raw.keyEnv === undefined || raw.keyEnv === null
+                ? 'ANTHROPIC_AUTH_TOKEN' : raw.keyEnv,
             defaultModel: raw.defaultModel === undefined || raw.defaultModel === null
                 ? null : raw.defaultModel,
             match: matchPatterns(raw.match),
             env: envValues(raw.env),
         };
+        if (!KEY_ENVS.has(profile.keyEnv)) fail('SERVICE_NATIVE_PROFILE_INVALID');
         if (profile.defaultModel !== null
             && (typeof profile.defaultModel !== 'string'
                 || !MODEL_RE.test(profile.defaultModel))) {
@@ -229,10 +234,11 @@ export function readProfileKey(profile) {
 }
 
 export function profileProviderEnv(profile, key) {
+    const keyEnv = profile.keyEnv || 'ANTHROPIC_AUTH_TOKEN';
     return {
         ...(profile.env ?? {}),
         ...(profile.baseUrl ? { ANTHROPIC_BASE_URL: profile.baseUrl } : {}),
-        ...(key ? { ANTHROPIC_AUTH_TOKEN: key } : {}),
+        ...(key ? { [keyEnv]: key } : {}),
         ...(profile.defaultModel ? { ANTHROPIC_MODEL: profile.defaultModel } : {}),
     };
 }

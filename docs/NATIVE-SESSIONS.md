@@ -81,15 +81,16 @@ real-mode service config:
         "id": "kimi",
         "label": "Kimi",
         "configDir": "/home/<user>/.claude",
-        "baseUrl": "https://api.moonshot.cn/anthropic",
+        "baseUrl": "https://api.kimi.com/coding",
         "keyFile": "/absolute/private/kimi.key",
-        "defaultModel": "k3.1-pro",
+        "keyEnv": "ANTHROPIC_API_KEY",
+        "defaultModel": "kimi-for-coding",
         "match": ["k3.", "kimi-"],
         "env": {
-          "CLAUDE_CODE_SUBAGENT_MODEL": "k3.1-pro",
-          "ANTHROPIC_DEFAULT_OPUS_MODEL": "k3.1-pro",
-          "ANTHROPIC_DEFAULT_SONNET_MODEL": "k3.1-pro",
-          "ANTHROPIC_DEFAULT_HAIKU_MODEL": "k3.1-pro"
+          "CLAUDE_CODE_SUBAGENT_MODEL": "kimi-for-coding",
+          "ANTHROPIC_DEFAULT_OPUS_MODEL": "kimi-for-coding",
+          "ANTHROPIC_DEFAULT_SONNET_MODEL": "kimi-for-coding",
+          "ANTHROPIC_DEFAULT_HAIKU_MODEL": "kimi-for-coding"
         }
       }
     ]
@@ -124,9 +125,19 @@ the worker can read its own environment, including `ANTHROPIC_AUTH_TOKEN`. A
 profile without `keyFile` uses whatever authentication the config directory
 already holds; that path is not exercised in this build and remains `NO_DATA`.
 
+`keyEnv` selects which variable receives the key. The default,
+`ANTHROPIC_AUTH_TOKEN`, is what the Direct Moonshot pay-as-you-go endpoint and
+the GLM coding-plan endpoint use. Kimi Code coding-plan keys use
+`https://api.kimi.com/coding` (overseas: `https://api.kimi.ai/coding`),
+`ANTHROPIC_API_KEY` and the model alias `kimi-for-coding`; the two Kimi key
+types are not interchangeable. The GLM coding plan uses
+`https://open.bigmodel.cn/api/anthropic`, `ANTHROPIC_AUTH_TOKEN` and
+`glm-5.4[1m]` (Haiku: `glm-5.3-flash[1m]`).
+
 Provider credentials do not move between profiles: a profiled worker receives
-only proxy variables plus its own `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`
-and `ANTHROPIC_MODEL`. Existing single-environment setups can omit `profiles`
+only proxy variables plus its own `ANTHROPIC_BASE_URL`, `ANTHROPIC_MODEL` and
+the one key variable selected by `keyEnv` (`ANTHROPIC_AUTH_TOKEN` by default,
+or `ANTHROPIC_API_KEY`). Existing single-environment setups can omit `profiles`
 and keep the old behavior. Provider alias variables belong in the profile's
 `env` object. It is a fixed allow-list: the four `ANTHROPIC_DEFAULT_*` model
 aliases, `CLAUDE_CODE_SUBAGENT_MODEL`, the two `CLAUDE_CODE_*` limits, the

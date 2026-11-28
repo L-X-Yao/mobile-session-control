@@ -108,6 +108,7 @@ esac
                 configDir: kimiConfig,
                 baseUrl: 'https://api.moonshot.cn/anthropic',
                 keyFile: kimiKey,
+                keyEnv: 'ANTHROPIC_API_KEY',
                 defaultModel: 'k3.1-pro',
                 match: ['k3.'],
                 env: { CLAUDE_CODE_SUBAGENT_MODEL: 'k3.1-pro' },
@@ -125,7 +126,8 @@ esac
     const kimiHost = await runtime.resolveHost({ session: { provider: { id: kimi.id } } });
     assert.equal(kimiHost.env.CLAUDE_CONFIG_DIR, kimiConfig);
     assert.equal(kimiHost.env.ANTHROPIC_BASE_URL, 'https://api.moonshot.cn/anthropic');
-    assert.equal(kimiHost.env.ANTHROPIC_AUTH_TOKEN, 'kimi-secret');
+    assert.equal(kimiHost.env.ANTHROPIC_API_KEY, 'kimi-secret');
+    assert.equal(kimiHost.env.ANTHROPIC_AUTH_TOKEN, undefined);
     assert.equal(kimiHost.env.ANTHROPIC_MODEL, 'k3.1-pro');
     assert.equal(kimiHost.env.CLAUDE_CODE_SUBAGENT_MODEL, 'k3.1-pro');
     assert.equal(kimiHost.env.ANTHROPIC_LEAK, undefined);
@@ -135,6 +137,7 @@ esac
     const deepseekHost = await runtime.resolveHost({ session: { provider: { id: deepseek.id } } });
     assert.equal(deepseekHost.env.CLAUDE_CONFIG_DIR, dsConfig);
     assert.equal(deepseekHost.env.ANTHROPIC_AUTH_TOKEN, 'ds-secret');
+    assert.equal(deepseekHost.env.ANTHROPIC_API_KEY, undefined);
     assert.equal(deepseekHost.env.CLAUDE_FORK_SESSION, undefined);
 
     // A key that becomes group-readable after startup fails closed instead of

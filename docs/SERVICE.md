@@ -33,6 +33,7 @@ inside the config are rejected. Required and optional fields:
 | `native.profiles[].configDir` | no | Absolute owned `CLAUDE_CONFIG_DIR` without group/other write; defaults to `<home>/.claude` |
 | `native.profiles[].baseUrl` | no | Provider endpoint; https, or http only for loopback |
 | `native.profiles[].keyFile` | no | Absolute mode-0600 regular file; the value is read into the child environment only |
+| `native.profiles[].keyEnv` | no | Environment variable that receives `keyFile`: `ANTHROPIC_AUTH_TOKEN` (default) or `ANTHROPIC_API_KEY` |
 | `native.profiles[].defaultModel` | no | Value exported as `ANTHROPIC_MODEL` for this profile |
 | `native.profiles[].match` | shared dirs | Model prefixes used to route a session in a shared config directory; required when profiles share one |
 | `native.profiles[].env` | no | Up to 16 allow-listed provider settings: `ANTHROPIC_DEFAULT_{FABLE,OPUS,SONNET,HAIKU}_MODEL`, `CLAUDE_CODE_SUBAGENT_MODEL`, `CLAUDE_CODE_MAX_OUTPUT_TOKENS`, `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`, `DISABLE_{TELEMETRY,ERROR_REPORTING,AUTOUPDATER}` |
@@ -174,8 +175,9 @@ service then has one provider environment; put credentials in a mode-0600
 `EnvironmentFile=` referenced by the unit.
 
 With `native.profiles`, each worker gets proxy variables from the service
-environment plus that profile's `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`
-(read from `keyFile`) and `ANTHROPIC_MODEL`. The relay's `ANTHROPIC_*` values
+environment plus that profile's `ANTHROPIC_BASE_URL`, `ANTHROPIC_MODEL` and the
+one key variable selected by `keyEnv` (`ANTHROPIC_AUTH_TOKEN` by default, or
+`ANTHROPIC_API_KEY`; read from `keyFile`). The relay's `ANTHROPIC_*` values
 are not inherited, so a profile cannot silently reuse the wrong endpoint. A
 profile `configDir` that is shared by more than one profile must declare
 `match` prefixes. The service reads the last assistant model from the session

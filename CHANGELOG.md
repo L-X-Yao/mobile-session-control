@@ -23,6 +23,10 @@
   `DISABLE_*` switches. Endpoint, token and main model stay dedicated fields;
   credential-looking names, `HOME`, `PATH` and `CLAUDE_CONFIG_DIR` are
   rejected. Real-provider evidence for these aliases remains `NO_DATA`.
+- A profile `keyEnv` selects `ANTHROPIC_AUTH_TOKEN` (default) or
+  `ANTHROPIC_API_KEY` for the key file. Kimi Code coding-plan keys use
+  `ANTHROPIC_API_KEY` and `https://api.kimi.com/coding`; the Direct Moonshot
+  and GLM coding-plan endpoints keep the bearer token.
 
 ## 0.2.0 — 2026-11-26
 
