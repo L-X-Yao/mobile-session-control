@@ -43,11 +43,12 @@ remains loopback-only; `MSC_PUBLIC_URL` is for the phone-visible URL printed by
 the script, not a relay bind change. If `claude agents --json` fails, native
 mode refuses to start rather than risk resuming a live session in place.
 
-Native mode inherits `ANTHROPIC_*` and proxy variables from the shell that
-starts it, so the resumed session uses the same endpoint and model as that
-shell. Those values are visible to tool calls, as in a normal terminal. One
-relay has one provider environment: sessions created under a different provider
-are listed, but resume against the relay's endpoint.
+Without `native.profiles`, native mode inherits `ANTHROPIC_*` and proxy
+variables from the shell that starts it, so the resumed session uses the same
+endpoint and model as that shell. Those values are visible to tool calls, as in
+a normal terminal. One relay then has one provider environment: sessions
+created under a different provider are listed, but resume against the relay's
+endpoint. Configure profiles to route each session to its own provider.
 
 ## Durable service mode
 
@@ -65,17 +66,75 @@ real-mode service config:
     "claudePath": "/home/<user>/.local/bin/claude",
     "home": "/home/<user>",
     "limit": 20,
-    "refreshMs": 30000
+    "refreshMs": 30000,
+    "profiles": [
+      {
+        "id": "deepseek",
+        "label": "DeepSeek",
+        "configDir": "/home/<user>/.claude",
+        "baseUrl": "https://api.deepseek.com/anthropic",
+        "keyFile": "/absolute/private/deepseek.key",
+        "defaultModel": "deepseek-flash",
+        "match": ["deepseek-"]
+      },
+      {
+        "id": "kimi",
+        "label": "Kimi",
+        "configDir": "/home/<user>/.claude",
+        "baseUrl": "https://api.moonshot.cn/anthropic",
+        "keyFile": "/absolute/private/kimi.key",
+        "defaultModel": "k3.1-pro",
+        "match": ["k3.", "kimi-"]
+      }
+    ]
   }
 }
 ```
 
 Native sessions join the Phase 9 providers in one relay and one phone URL.
-IDs are stable hashes of the session ID; a background refresh adds sessions
-created after service start without rebinding open phone sessions. Active
-sessions are forked, stopped sessions resumed. See `docs/SERVICE.md` for the
-startup errors, systemd `ReadWritePaths` requirement and the single-provider
-environment boundary.
+IDs are stable hashes of the session ID (and profile ID when profiled); a
+background refresh adds sessions created after service start without rebinding
+open phone sessions. Active sessions are forked, stopped sessions resumed. See
+`docs/SERVICE.md` for the startup errors, systemd `ReadWritePaths` requirement
+and the profile environment boundary.
+
+### Provider profiles
+
+Each profile names one endpoint, one optional key file and one
+`CLAUDE_CONFIG_DIR`. A profile with an exclusive directory uses that profile
+directly; profiles that share a directory are separated by the `match` model
+prefixes. The service reads the last assistant model from the session
+transcript and selects the longest matching prefix. A session with no unique
+match is listed once per candidate profile, with the profile in the label, so
+the normal phone provider picker is the choice. Legacy sessions without a
+usable model are therefore still selectable, but the picker shows every
+candidate.
+
+`keyFile` is read when a host is resolved, never at config load and never
+logged. It must be an absolute, owned, mode-0600 regular file. A key that
+becomes group-readable after startup makes that provider unavailable instead of
+falling back to the relay environment. As in a normal terminal, a tool run by
+the worker can read its own environment, including `ANTHROPIC_AUTH_TOKEN`. A
+profile without `keyFile` uses whatever authentication the config directory
+already holds; that path is not exercised in this build and remains `NO_DATA`.
+
+Provider credentials do not move between profiles: a profiled worker receives
+only proxy variables plus its own `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`
+and `ANTHROPIC_MODEL`. Existing single-environment setups can omit `profiles`
+and keep the old behavior. The schema does not yet expose provider-specific
+alias variables such as `ANTHROPIC_DEFAULT_*` or `CLAUDE_CODE_SUBAGENT_MODEL`;
+those need a later reviewed addition and real-provider evidence.
+
+`limit` counts distinct sessions, not provider entries. An ambiguous session is
+expanded after the session limit is applied, so its candidate list is never cut
+in half. Enabling profiles changes native provider IDs (the profile ID joins the
+hash); close or recreate open native relay sessions after the switch.
+
+Sessions created before profiles existed usually live in `~/.claude`. They are
+listed through any profile that names that directory, and routed by model. To
+isolate new sessions per provider, create a separate private `CLAUDE_CONFIG_DIR`
+for each profile and start Claude Code with that variable; do not move or
+rewrite historical transcripts just to make the picker tidy.
 
 ## Verification status
 
@@ -114,6 +173,13 @@ returned 409. Production native mode was then enabled on a personal host with
 an exact-cwd allow-list; the service reported 12 native sessions / 15 active.
 Phone/Tailscale verification, human hands-on and a production 24-hour run
 remain `NO_DATA`.
+
+2026-11-28: multi-profile routing was implemented offline: profile validation,
+one listing child per config directory, last-assistant-model routing, ambiguous
+sessions expanded once per candidate, per-profile host environments and
+fail-closed key-file checks. Fake-SDK tests cover two exclusive directories,
+one shared directory and an unknown session. Real Kimi and GLM turns remain
+`NO_DATA`; no real provider key was used.
 
 ## Boundaries
 

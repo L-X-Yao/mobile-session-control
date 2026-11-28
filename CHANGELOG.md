@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.1 — unreleased
+
+- Native service profiles. A `native.profiles` array gives each provider its
+  own `CLAUDE_CONFIG_DIR`, `baseUrl`, optional mode-0600 `keyFile`,
+  `defaultModel` and model prefixes. Without profiles, native mode keeps the
+  previous single inherited environment.
+- Sessions in a shared config directory are routed by the last assistant model
+  in the transcript. The longest matching prefix wins; a session with no unique
+  match is exposed once per candidate profile so the phone provider picker is
+  the choice. Legacy sessions without a usable model stay selectable.
+- Profiled hosts receive only proxy variables plus their own
+  `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN` and `ANTHROPIC_MODEL`; the
+  relay's `ANTHROPIC_*` values are not inherited. Key files are read at host
+  resolution and fail closed if their permissions change.
+- Native provider IDs include the profile ID when profiled, and labels append
+  the profile. Offline tests cover two exclusive directories, one shared
+  directory and an ambiguous session; real Kimi/GLM turns remain `NO_DATA`.
+
 ## 0.2.0 — 2026-11-26
 
 - A real-mode service can add native Claude Code sessions through an optional

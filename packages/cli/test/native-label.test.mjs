@@ -42,4 +42,25 @@ test('keeps a short title and project intact', () => {
         `${TAKEOVER_PREFIX}Fix resume · repo`,
     );
     assert.equal(nativeProviderLabel('', '', false), `${TAKEOVER_PREFIX}untitled`);
+    assert.equal(
+        nativeProviderLabel('Fix resume', 'repo', false, 64, 'DeepSeek'),
+        `${TAKEOVER_PREFIX}Fix resume · repo · DeepSeek`,
+    );
+});
+
+test('keeps the profile visible when a long title is truncated', () => {
+    const title = 'T'.repeat(64);
+    const deepseek = nativeProviderLabel(title, 'project', false, 64, 'DeepSeek');
+    const glm = nativeProviderLabel(title, 'project', false, 64, 'GLM');
+    assert.notEqual(deepseek, glm);
+    assert.ok(deepseek.includes('DeepSeek'));
+    assert.ok(glm.includes('GLM'));
+    assert.ok(deepseek.length <= 64);
+    assert.ok(glm.length <= 64);
+
+    const active = nativeProviderLabel(title, 'project', true, 64, 'DeepSeek');
+    assert.ok(active.includes('DeepSeek'));
+    assert.ok(active.endsWith(ACTIVE_FORK_SUFFIX));
+    assert.ok(active.length <= 64);
+    assert.ok(active.isWellFormed());
 });

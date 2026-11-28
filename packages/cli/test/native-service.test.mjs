@@ -130,6 +130,34 @@ test('catalog uses stable ids, active markers and skips missing cwd', (t) => {
     assert.ok(!second.providers.find((item) => item.id === firstId).label.includes('[active→fork]'));
 });
 
+test('profiled entries for one session stay distinct and stable', (t) => {
+    const dir = tempDir(t);
+    const work = path.join(dir, 'work');
+    fs.mkdirSync(work);
+    const sessions = [
+        {
+            sessionId: SESSION_ID, cwd: work, customTitle: 'Shared',
+            profileId: 'deepseek', profileLabel: 'DeepSeek', lastModified: 2,
+        },
+        {
+            sessionId: SESSION_ID, cwd: work, customTitle: 'Shared',
+            profileId: 'kimi', profileLabel: 'Kimi', lastModified: 2,
+        },
+    ];
+    const ids = new Map();
+    const first = buildNativeCatalog(sessions, new Map(), { idBySession: ids });
+    assert.equal(first.providers.length, 2);
+    assert.notEqual(first.providers[0].id, first.providers[1].id);
+    assert.ok(first.providers[0].label.includes('DeepSeek'));
+    assert.ok(first.providers[1].label.includes('Kimi'));
+    const second = buildNativeCatalog([...sessions].reverse(), new Map(), { idBySession: ids });
+    const byProfile = new Map(second.providers.map((item) => [
+        item.label.includes('DeepSeek') ? 'deepseek' : 'kimi', item.id,
+    ]));
+    assert.equal(byProfile.get('deepseek'), first.providers[0].id);
+    assert.equal(byProfile.get('kimi'), first.providers[1].id);
+});
+
 test('active listing fails closed on a non-zero or malformed command', (t) => {
     const dir = tempDir(t);
     const good = agentsScript(dir, `echo '[{"sessionId":"${SESSION_ID}"}]'`);
@@ -580,4 +608,67 @@ test('native config requires real mode and an existing SDK', (t) => {
     assert.equal(loaded.native.home, home);
     assert.equal(loaded.native.limit, 20);
     assert.equal(loaded.native.refreshMs, 30_000);
+});
+
+test('native profiles are validated when the service config loads', (t) => {
+    const dir = tempDir(t);
+    const home = path.join(dir, 'home');
+    const configDir = path.join(dir, 'claude');
+    fs.mkdirSync(home, { mode: 0o700 });
+    fs.mkdirSync(configDir, { mode: 0o700 });
+    const sdk = path.join(dir, 'sdk.mjs');
+    fs.writeFileSync(sdk, 'export async function listSessions() { return []; }\n');
+    const key = path.join(dir, 'provider.key');
+    fs.writeFileSync(key, 'not-a-real-key\n', { mode: 0o600 });
+    fs.chmodSync(key, 0o600);
+    const phase9 = path.join(dir, 'phase9.json');
+    writeJson(phase9, {});
+    const file = path.join(dir, 'service-profiles.json');
+    const native = {
+        sdkPath: sdk,
+        home,
+        profiles: [{
+            id: 'deepseek',
+            label: 'DeepSeek',
+            configDir,
+            baseUrl: 'https://api.deepseek.com/anthropic',
+            keyFile: key,
+            defaultModel: 'deepseek-flash',
+            match: ['deepseek-'],
+        }],
+    };
+    writeJson(file, {
+        mode: 'real',
+        port: 0,
+        phase9Config: phase9,
+        stateFile: path.join(dir, 'state.json'),
+        native,
+    });
+    const loaded = loadServiceConfig(file);
+    assert.equal(loaded.native.profiles.length, 1);
+    assert.equal(loaded.native.profiles[0].id, 'deepseek');
+
+    fs.chmodSync(key, 0o644);
+    assert.throws(() => loadServiceConfig(file), /SERVICE_NATIVE_PROFILE_KEY_INVALID/);
+    fs.chmodSync(key, 0o600);
+
+    const shared = path.join(dir, 'shared');
+    fs.mkdirSync(shared, { mode: 0o700 });
+    native.profiles.push({
+        id: 'glm',
+        label: 'GLM',
+        configDir: shared,
+        keyFile: key,
+        match: ['glm-'],
+    });
+    native.profiles[0].configDir = shared;
+    native.profiles[0].match = [];
+    writeJson(file, {
+        mode: 'real',
+        port: 0,
+        phase9Config: phase9,
+        stateFile: path.join(dir, 'state.json'),
+        native,
+    });
+    assert.throws(() => loadServiceConfig(file), /SERVICE_NATIVE_PROFILE_MATCH_REQUIRED/);
 });

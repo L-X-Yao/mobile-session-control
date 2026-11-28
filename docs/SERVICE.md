@@ -25,8 +25,16 @@ inside the config are rejected. Required and optional fields:
 | `native.sdkPath` | native yes | Absolute Agent SDK `sdk.mjs` path |
 | `native.home` | native yes | Absolute real HOME, an owned directory; `/` is rejected |
 | `native.claudePath` | no | Absolute `claude` executable for `agents --json`; defaults to `CLAUDE_CODE_PATH` or `claude` |
-| `native.limit` | no | Recent native sessions exposed, 1-200, default 20 |
+| `native.limit` | no | Distinct native sessions considered, 1-200, default 20; an ambiguous session may add one provider entry per candidate profile |
 | `native.refreshMs` | no | Catalog refresh interval, 1000-300000 ms, default 30000 |
+| `native.profiles` | no | Optional provider profiles, 1-8 entries; omit for the legacy inherited environment |
+| `native.profiles[].id` | yes | Unique lowercase slug, 2-32 chars |
+| `native.profiles[].label` | yes | Short label appended to the native provider label |
+| `native.profiles[].configDir` | no | Absolute owned `CLAUDE_CONFIG_DIR` without group/other write; defaults to `<home>/.claude` |
+| `native.profiles[].baseUrl` | no | Provider endpoint; https, or http only for loopback |
+| `native.profiles[].keyFile` | no | Absolute mode-0600 regular file; the value is read into the child environment only |
+| `native.profiles[].defaultModel` | no | Value exported as `ANTHROPIC_MODEL` for this profile |
+| `native.profiles[].match` | shared dirs | Model prefixes used to route a session in a shared config directory; required when profiles share one |
 | `fakeHost` | no | Absolute fake-host script; defaults to the repository fake |
 | `phase9Config` | real only | Absolute private Phase 9 profile file |
 | `stateFile` | real yes, fake no | Absolute state snapshot; enables restart persistence and defines the writable root for real mode |
@@ -138,9 +146,10 @@ new sessions still come from them.
 }
 ```
 
-Native providers are labelled `接管 · <title> · <project>`. IDs are stable
-hashes of the session ID, not list positions, so a refresh cannot rebind an
-open phone session to a different conversation. The catalog refreshes in the
+Native providers are labelled `接管 · <title> · <project>`, with ` · <profile>`
+appended when profiles are configured. IDs are stable hashes of the session ID
+(and the profile ID when profiled), not list positions, so a refresh cannot
+rebind an open phone session to a different conversation. The catalog refreshes in the
 background; a newly created terminal session appears without a service restart.
 An active session is always forked; a stopped session is resumed in place. A
 mode-0600 `native-registry.json` beside the state file maps IDs to session IDs
@@ -158,11 +167,21 @@ so a Bash tool child cannot outlive Stop.
 If `claude agents --json` fails at startup, the service refuses to start: it
 cannot prove which sessions are live. A later refresh failure keeps the last
 catalog and stops accepting new native hosts after three refresh intervals.
-Native workers inherit only `ANTHROPIC_*` and proxy variables from the service
-environment, plus the explicit SDK/Claude paths. One service still has one
-provider environment. Put provider credentials in a mode-0600
-`EnvironmentFile=` referenced by the unit; there is no native key-file setting
-analogous to the Phase 9 wrapper key files.
+Without `native.profiles`, native workers inherit only `ANTHROPIC_*` and proxy
+variables from the service environment, plus the explicit SDK/Claude paths. One
+service then has one provider environment; put credentials in a mode-0600
+`EnvironmentFile=` referenced by the unit.
+
+With `native.profiles`, each worker gets proxy variables from the service
+environment plus that profile's `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`
+(read from `keyFile`) and `ANTHROPIC_MODEL`. The relay's `ANTHROPIC_*` values
+are not inherited, so a profile cannot silently reuse the wrong endpoint. A
+profile `configDir` that is shared by more than one profile must declare
+`match` prefixes. The service reads the last assistant model from the session
+transcript and assigns the longest matching prefix; a session with no unique
+match is exposed once per candidate profile, and the phone's provider picker is
+the choice. Sessions in an exclusive `configDir` use that profile directly.
+Key values are never logged and the config only stores the key path.
 
 Native workers load only `settingSources: ['user']` and set
 `strictMcpConfig: true`. Project settings, skills, hooks and MCP are not
@@ -207,6 +226,11 @@ sandbox before enabling native mode in production.
 tools that edit project files fail unless their roots are listed; a separate
 native unit with a less strict policy is the alternative. Offline code does
 not resolve or prove the unit policy.
+
+Every `native.profiles[].configDir` is a session store and must also be
+writable. Add any directory outside `%h/.claude` to `ReadWritePaths`; otherwise
+the worker loads the transcript but cannot persist a turn. Key files need read
+access only and do not belong in `ReadWritePaths`.
 
 Rollback: stop the service, remove the `native` block from `service.json`, and
 remove the native-only `ReadWritePaths` entries (`%h/.claude` and the project
@@ -307,6 +331,12 @@ one of:
 | `SERVICE_NATIVE_CLAUDE_MISSING` | Native `claudePath` is absent or not executable |
 | `SERVICE_NATIVE_ACTIVE_LIST_FAILED` | `claude agents --json` failed at startup |
 | `SERVICE_NATIVE_SESSIONS_INVALID` | `listSessions()` returned a non-array |
+| `SERVICE_NATIVE_LIST_FAILED` | The per-profile listing child failed or returned invalid JSON |
+| `SERVICE_NATIVE_PROFILES_INVALID` | `native.profiles` is not a 1-8 entry array, or `home` is invalid |
+| `SERVICE_NATIVE_PROFILE_INVALID` | A profile has an unknown field, bad id/label/baseUrl/model, or duplicate id |
+| `SERVICE_NATIVE_PROFILE_CONFIG_DIR_INVALID` | A profile `configDir` is not an absolute owned directory without group/other write |
+| `SERVICE_NATIVE_PROFILE_KEY_INVALID` | A profile `keyFile` is not an absolute owned mode-0600 regular file of 1-4096 bytes |
+| `SERVICE_NATIVE_PROFILE_MATCH_REQUIRED` | Two profiles share a `configDir` and one has no `match` prefix |
 | `SERVICE_PROVIDER_COLLISION` | A native provider ID collided with a Phase 9 provider |
 | `SERVICE_NATIVE_LIMIT_INVALID` / `_REFRESH_MS_INVALID` | Native numeric option out of range |
 | `SERVICE_EVENT_LOG_NOT_PRIVATE` | Existing event log is not an owner-only regular file |

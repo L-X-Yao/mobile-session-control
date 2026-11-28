@@ -18,6 +18,7 @@ import {
     phase9ProviderCatalog,
 } from './session/real-host.mjs';
 import { createNativeRuntime } from './native/runtime.mjs';
+import { validateNativeProfiles } from './native/profiles.mjs';
 
 const FAKE_HOST = fileURLToPath(new URL('./testing/fake-session-host.mjs', import.meta.url));
 const WEB_DIR = fileURLToPath(new URL('../../../apps/web', import.meta.url));
@@ -98,6 +99,7 @@ function validateNativeConfig(value) {
         claudePath,
         limit: integerOption(value.limit, 'NATIVE_LIMIT', 1, 200) ?? 20,
         refreshMs: integerOption(value.refreshMs, 'NATIVE_REFRESH_MS', 1000, 300000) ?? 30000,
+        profiles: validateNativeProfiles(value.profiles, { home }),
     };
 }
 

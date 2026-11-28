@@ -29,13 +29,23 @@ export function truncateLabel(value, max) {
     return result;
 }
 
-export function nativeProviderLabel(title, project, live, max = MAX_NATIVE_LABEL) {
+export function nativeProviderLabel(
+    title, project, live, max = MAX_NATIVE_LABEL, profile = '',
+) {
     const suffix = live ? ACTIVE_FORK_SUFFIX : '';
     const text = sanitizeLabel(title) || 'untitled';
     const location = sanitizeLabel(project);
-    const raw = location
-        ? `${TAKEOVER_PREFIX}${text} · ${location}`
-        : `${TAKEOVER_PREFIX}${text}`;
-    const prefix = truncateLabel(raw, Math.max(0, max - suffix.length)).trimEnd();
-    return `${prefix}${suffix}`;
+    const parts = [`${TAKEOVER_PREFIX}${text}`];
+    if (location) parts.push(location);
+    // A profile is the only way to tell two candidates for one session apart,
+    // so reserve its room before truncating the title/project body.
+    const profileText = truncateLabel(
+        sanitizeLabel(profile), Math.max(0, max - suffix.length - 3),
+    );
+    const profileSuffix = profileText ? ` · ${profileText}` : '';
+    const raw = parts.join(' · ');
+    const prefix = truncateLabel(
+        raw, Math.max(0, max - suffix.length - profileSuffix.length),
+    ).trimEnd();
+    return `${prefix}${profileSuffix}${suffix}`;
 }

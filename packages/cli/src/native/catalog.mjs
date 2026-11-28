@@ -7,7 +7,7 @@ import path from 'node:path';
 import { execFile, spawnSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
-import { nativeProviderLabel } from './label.mjs';
+import { MAX_NATIVE_LABEL, nativeProviderLabel } from './label.mjs';
 
 const ACTIVE_LIST_MAX_BUFFER = 10 * 1024 * 1024;
 const execFileAsync = promisify(execFile);
@@ -68,13 +68,21 @@ export async function readActiveSessionsAsync(claudePath = 'claude', env = proce
     }
 }
 
-function providerId(sessionId, length) {
-    return `native-${crypto.createHash('sha256')
-        .update(sessionId).digest('hex').slice(0, length)}`;
+// A session in a shared config directory can belong to more than one profile;
+// keying by session ID alone would let the second profile overwrite the first
+// provider ID. Legacy entries (no profile) keep their historical ID.
+export function nativeSessionKey(sessionId, profileId = null) {
+    return profileId ? `${profileId}\u0000${sessionId}` : sessionId;
 }
 
-function assignProviderId(sessionId, idBySession, used, reserved) {
-    const existing = idBySession.get(sessionId);
+function providerId(sessionId, profileId, length) {
+    return `native-${crypto.createHash('sha256')
+        .update(nativeSessionKey(sessionId, profileId)).digest('hex').slice(0, length)}`;
+}
+
+function assignProviderId(sessionId, profileId, idBySession, used, reserved) {
+    const key = nativeSessionKey(sessionId, profileId);
+    const existing = idBySession.get(key);
     if (existing && !used.has(existing)) {
         used.add(existing);
         return existing;
@@ -82,9 +90,9 @@ function assignProviderId(sessionId, idBySession, used, reserved) {
     // The relay provider id is capped at 32 characters. Twelve hex digits are
     // ample; longer hashes only exist to resolve a collision.
     for (const length of [12, 16, 20, 24]) {
-        const id = providerId(sessionId, length);
+        const id = providerId(sessionId, profileId, length);
         if (!used.has(id) && !reserved.has(id)) {
-            idBySession.set(sessionId, id);
+            idBySession.set(key, id);
             used.add(id);
             reserved.add(id);
             return id;
@@ -112,17 +120,25 @@ export function buildNativeCatalog(sessions, activeMap, {
         } catch {
             continue;
         }
-        const id = assignProviderId(session.sessionId, idBySession, used, reserved);
+        const profileId = typeof session.profileId === 'string'
+            && /^[a-z][a-z0-9-]{1,31}$/.test(session.profileId)
+            ? session.profileId : null;
+        const profileLabel = profileId && typeof session.profileLabel === 'string'
+            ? session.profileLabel : '';
+        const id = assignProviderId(session.sessionId, profileId, idBySession, used, reserved);
         const live = activeMap.get(session.sessionId);
         const title = session.customTitle || session.summary || session.firstPrompt || 'untitled';
         byId.set(id, {
             sessionId: session.sessionId,
             cwd: session.cwd,
             active: Boolean(live),
+            profileId,
         });
         providers.push({
             id,
-            label: nativeProviderLabel(title, path.basename(session.cwd), Boolean(live)),
+            label: nativeProviderLabel(
+                title, path.basename(session.cwd), Boolean(live), MAX_NATIVE_LABEL, profileLabel,
+            ),
             model: 'native',
             effort: 'low',
             transport: 'anthropic-compatible-sse',

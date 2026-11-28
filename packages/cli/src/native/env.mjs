@@ -16,3 +16,15 @@ export function inheritedProviderEnv(parent = process.env) {
     }
     return result;
 }
+
+// A profiled host must not inherit ANTHROPIC_* from the relay environment:
+// the profile owns the endpoint, key and model, and a leaked base URL would
+// silently send the session to the wrong provider.
+export function inheritedProxyEnv(parent = process.env) {
+    const result = {};
+    for (const [name, value] of Object.entries(parent)) {
+        if (typeof value !== 'string') continue;
+        if (INHERITED_ENV_NAMES.has(name)) result[name] = value;
+    }
+    return result;
+}
