@@ -125,6 +125,44 @@ test('base URLs must be https or loopback http', (t) => {
     );
 });
 
+test('profile env accepts only the provider allow-list', (t) => {
+    const dir = tempDir(t);
+    const home = configDir(dir, 'home');
+    const raw = profile(dir, {
+        env: {
+            CLAUDE_CODE_SUBAGENT_MODEL: 'k3.1-pro',
+            ANTHROPIC_DEFAULT_OPUS_MODEL: 'k3.1-pro',
+            DISABLE_TELEMETRY: '1',
+        },
+    });
+    const profiles = validateNativeProfiles([raw], { home });
+    assert.deepEqual(profiles[0].env, raw.env);
+
+    for (const bad of [
+        { ANTHROPIC_BASE_URL: 'https://evil.example' },
+        { ANTHROPIC_AUTH_TOKEN: 'secret' },
+        { ANTHROPIC_API_KEY: 'secret' },
+        { CLAUDE_CONFIG_DIR: '/tmp' },
+        { HOME: '/tmp' },
+        { PATH: '/tmp' },
+        { UNKNOWN_SETTING: '1' },
+    ]) {
+        assert.throws(
+            () => validateNativeProfiles([profile(dir, { env: bad })], { home }),
+            /SERVICE_NATIVE_PROFILE_ENV_INVALID/,
+            JSON.stringify(bad),
+        );
+    }
+    for (const value of ['', ' padded', 'line\nbreak', 5, null]) {
+        assert.throws(
+            () => validateNativeProfiles([profile(dir, {
+                env: { CLAUDE_CODE_SUBAGENT_MODEL: value },
+            })], { home }),
+            /SERVICE_NATIVE_PROFILE_ENV_INVALID/,
+        );
+    }
+});
+
 test('a shared config directory requires model prefixes', (t) => {
     const dir = tempDir(t);
     const home = configDir(dir, 'home');

@@ -35,6 +35,7 @@ inside the config are rejected. Required and optional fields:
 | `native.profiles[].keyFile` | no | Absolute mode-0600 regular file; the value is read into the child environment only |
 | `native.profiles[].defaultModel` | no | Value exported as `ANTHROPIC_MODEL` for this profile |
 | `native.profiles[].match` | shared dirs | Model prefixes used to route a session in a shared config directory; required when profiles share one |
+| `native.profiles[].env` | no | Up to 16 allow-listed provider settings: `ANTHROPIC_DEFAULT_{FABLE,OPUS,SONNET,HAIKU}_MODEL`, `CLAUDE_CODE_SUBAGENT_MODEL`, `CLAUDE_CODE_MAX_OUTPUT_TOKENS`, `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`, `DISABLE_{TELEMETRY,ERROR_REPORTING,AUTOUPDATER}` |
 | `fakeHost` | no | Absolute fake-host script; defaults to the repository fake |
 | `phase9Config` | real only | Absolute private Phase 9 profile file |
 | `stateFile` | real yes, fake no | Absolute state snapshot; enables restart persistence and defines the writable root for real mode |
@@ -337,6 +338,7 @@ one of:
 | `SERVICE_NATIVE_PROFILE_CONFIG_DIR_INVALID` | A profile `configDir` is not an absolute owned directory without group/other write |
 | `SERVICE_NATIVE_PROFILE_KEY_INVALID` | A profile `keyFile` is not an absolute owned mode-0600 regular file of 1-4096 bytes |
 | `SERVICE_NATIVE_PROFILE_MATCH_REQUIRED` | Two profiles share a `configDir` and one has no `match` prefix |
+| `SERVICE_NATIVE_PROFILE_ENV_INVALID` | A profile `env` has an unknown/credential name, too many entries, or an empty/oversized/whitespace value |
 | `SERVICE_PROVIDER_COLLISION` | A native provider ID collided with a Phase 9 provider |
 | `SERVICE_NATIVE_LIMIT_INVALID` / `_REFRESH_MS_INVALID` | Native numeric option out of range |
 | `SERVICE_EVENT_LOG_NOT_PRIVATE` | Existing event log is not an owner-only regular file |

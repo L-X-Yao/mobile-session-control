@@ -84,7 +84,13 @@ real-mode service config:
         "baseUrl": "https://api.moonshot.cn/anthropic",
         "keyFile": "/absolute/private/kimi.key",
         "defaultModel": "k3.1-pro",
-        "match": ["k3.", "kimi-"]
+        "match": ["k3.", "kimi-"],
+        "env": {
+          "CLAUDE_CODE_SUBAGENT_MODEL": "k3.1-pro",
+          "ANTHROPIC_DEFAULT_OPUS_MODEL": "k3.1-pro",
+          "ANTHROPIC_DEFAULT_SONNET_MODEL": "k3.1-pro",
+          "ANTHROPIC_DEFAULT_HAIKU_MODEL": "k3.1-pro"
+        }
       }
     ]
   }
@@ -121,9 +127,14 @@ already holds; that path is not exercised in this build and remains `NO_DATA`.
 Provider credentials do not move between profiles: a profiled worker receives
 only proxy variables plus its own `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`
 and `ANTHROPIC_MODEL`. Existing single-environment setups can omit `profiles`
-and keep the old behavior. The schema does not yet expose provider-specific
-alias variables such as `ANTHROPIC_DEFAULT_*` or `CLAUDE_CODE_SUBAGENT_MODEL`;
-those need a later reviewed addition and real-provider evidence.
+and keep the old behavior. Provider alias variables belong in the profile's
+`env` object. It is a fixed allow-list: the four `ANTHROPIC_DEFAULT_*` model
+aliases, `CLAUDE_CODE_SUBAGENT_MODEL`, the two `CLAUDE_CODE_*` limits, the
+non-essential-traffic switch and the three `DISABLE_*` switches. Endpoint,
+token and main model keep dedicated fields, and credential-looking names,
+`HOME`, `PATH` and `CLAUDE_CONFIG_DIR` are rejected. Values are 1-256
+characters with no whitespace padding or newlines. Real-provider evidence for
+these aliases remains `NO_DATA`.
 
 `limit` counts distinct sessions, not provider entries. An ambiguous session is
 expanded after the session limit is applied, so its candidate list is never cut
@@ -180,6 +191,11 @@ sessions expanded once per candidate, per-profile host environments and
 fail-closed key-file checks. Fake-SDK tests cover two exclusive directories,
 one shared directory and an unknown session. Real Kimi and GLM turns remain
 `NO_DATA`; no real provider key was used.
+
+2026-11-28: the profile `env` allow-list was added for provider alias and
+subagent model settings. Tests cover accepted names, rejected credential and
+process-control names, and the profiled host environment. Real-provider
+evidence for those aliases remains `NO_DATA`.
 
 ## Boundaries
 

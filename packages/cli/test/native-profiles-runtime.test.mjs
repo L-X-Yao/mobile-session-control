@@ -110,6 +110,7 @@ esac
                 keyFile: kimiKey,
                 defaultModel: 'k3.1-pro',
                 match: ['k3.'],
+                env: { CLAUDE_CODE_SUBAGENT_MODEL: 'k3.1-pro' },
             },
         ],
     });
@@ -126,6 +127,7 @@ esac
     assert.equal(kimiHost.env.ANTHROPIC_BASE_URL, 'https://api.moonshot.cn/anthropic');
     assert.equal(kimiHost.env.ANTHROPIC_AUTH_TOKEN, 'kimi-secret');
     assert.equal(kimiHost.env.ANTHROPIC_MODEL, 'k3.1-pro');
+    assert.equal(kimiHost.env.CLAUDE_CODE_SUBAGENT_MODEL, 'k3.1-pro');
     assert.equal(kimiHost.env.ANTHROPIC_LEAK, undefined);
     assert.equal(kimiHost.env.CLAUDE_FORK_SESSION, '1');
 

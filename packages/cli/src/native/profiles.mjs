@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const PROFILE_KEYS = new Set([
-    'id', 'label', 'configDir', 'baseUrl', 'keyFile', 'defaultModel', 'match',
+    'id', 'label', 'configDir', 'baseUrl', 'keyFile', 'defaultModel', 'match', 'env',
 ]);
 const ID_RE = /^[a-z][a-z0-9-]{1,31}$/;
 const MODEL_RE = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/;
@@ -13,6 +13,25 @@ const MATCH_RE = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,63}$/;
 const MAX_PROFILES = 8;
 const MAX_MATCH_PATTERNS = 20;
 const MAX_KEY_BYTES = 4096;
+const MAX_ENV_ENTRIES = 16;
+const MAX_ENV_VALUE = 256;
+
+// Provider aliases and runtime knobs that cannot move between providers. The
+// endpoint, token and main model keep dedicated fields so this map cannot
+// override them; credential-looking names are not in the list at all.
+const ALLOWED_ENV = new Set([
+    'ANTHROPIC_DEFAULT_FABLE_MODEL',
+    'ANTHROPIC_DEFAULT_OPUS_MODEL',
+    'ANTHROPIC_DEFAULT_SONNET_MODEL',
+    'ANTHROPIC_DEFAULT_HAIKU_MODEL',
+    'CLAUDE_CODE_SUBAGENT_MODEL',
+    'CLAUDE_CODE_MAX_OUTPUT_TOKENS',
+    'CLAUDE_CODE_AUTO_COMPACT_WINDOW',
+    'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',
+    'DISABLE_TELEMETRY',
+    'DISABLE_ERROR_REPORTING',
+    'DISABLE_AUTOUPDATER',
+]);
 
 function fail(code) {
     throw new Error(code);
@@ -75,6 +94,25 @@ function baseUrl(value) {
     return value;
 }
 
+function envValues(value) {
+    if (value === undefined || value === null) return {};
+    if (typeof value !== 'object' || Array.isArray(value)) {
+        fail('SERVICE_NATIVE_PROFILE_ENV_INVALID');
+    }
+    const entries = Object.entries(value);
+    if (entries.length > MAX_ENV_ENTRIES) fail('SERVICE_NATIVE_PROFILE_ENV_INVALID');
+    const result = {};
+    for (const [name, raw] of entries) {
+        if (!ALLOWED_ENV.has(name)) fail('SERVICE_NATIVE_PROFILE_ENV_INVALID');
+        if (typeof raw !== 'string' || raw.length === 0 || raw.length > MAX_ENV_VALUE
+            || raw !== raw.trim() || /[\u0000\r\n]/u.test(raw)) {
+            fail('SERVICE_NATIVE_PROFILE_ENV_INVALID');
+        }
+        result[name] = raw;
+    }
+    return result;
+}
+
 function matchPatterns(value) {
     if (value === undefined || value === null) return [];
     if (!Array.isArray(value) || value.length > MAX_MATCH_PATTERNS) {
@@ -128,6 +166,7 @@ export function validateNativeProfiles(value, { home } = {}) {
             defaultModel: raw.defaultModel === undefined || raw.defaultModel === null
                 ? null : raw.defaultModel,
             match: matchPatterns(raw.match),
+            env: envValues(raw.env),
         };
         if (profile.defaultModel !== null
             && (typeof profile.defaultModel !== 'string'
@@ -190,6 +229,7 @@ export function readProfileKey(profile) {
 
 export function profileProviderEnv(profile, key) {
     return {
+        ...(profile.env ?? {}),
         ...(profile.baseUrl ? { ANTHROPIC_BASE_URL: profile.baseUrl } : {}),
         ...(key ? { ANTHROPIC_AUTH_TOKEN: key } : {}),
         ...(profile.defaultModel ? { ANTHROPIC_MODEL: profile.defaultModel } : {}),

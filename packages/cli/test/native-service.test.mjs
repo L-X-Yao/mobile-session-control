@@ -635,6 +635,7 @@ test('native profiles are validated when the service config loads', (t) => {
             keyFile: key,
             defaultModel: 'deepseek-flash',
             match: ['deepseek-'],
+            env: { DISABLE_TELEMETRY: '1' },
         }],
     };
     writeJson(file, {
@@ -647,6 +648,7 @@ test('native profiles are validated when the service config loads', (t) => {
     const loaded = loadServiceConfig(file);
     assert.equal(loaded.native.profiles.length, 1);
     assert.equal(loaded.native.profiles[0].id, 'deepseek');
+    assert.equal(loaded.native.profiles[0].env.DISABLE_TELEMETRY, '1');
 
     fs.chmodSync(key, 0o644);
     assert.throws(() => loadServiceConfig(file), /SERVICE_NATIVE_PROFILE_KEY_INVALID/);

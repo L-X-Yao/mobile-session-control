@@ -17,6 +17,12 @@
 - Native provider IDs include the profile ID when profiled, and labels append
   the profile. Offline tests cover two exclusive directories, one shared
   directory and an ambiguous session; real Kimi/GLM turns remain `NO_DATA`.
+- A profile `env` map accepts only a fixed allow-list: the four
+  `ANTHROPIC_DEFAULT_*` model aliases, `CLAUDE_CODE_SUBAGENT_MODEL`, two
+  `CLAUDE_CODE_*` limits, the non-essential-traffic switch and three
+  `DISABLE_*` switches. Endpoint, token and main model stay dedicated fields;
+  credential-looking names, `HOME`, `PATH` and `CLAUDE_CONFIG_DIR` are
+  rejected. Real-provider evidence for these aliases remains `NO_DATA`.
 
 ## 0.2.0 — 2026-11-26
 
