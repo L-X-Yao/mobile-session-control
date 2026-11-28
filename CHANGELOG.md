@@ -40,6 +40,9 @@
 - `v0.1.6` shipped with a temporary `scorecard-action` v2.5.0 pin because the
   v2.6.0 GHCR image referenced a missing platform manifest. Revert to v2.6.0
   or newer once the upstream image is repaired.
+- Release boundary: the production 24-hour run, PWA-specific hands-on, real
+  provider HTTP request counts/attestation and iOS Safari remain `NO_DATA`.
+  The Android client is the verified client for this release.
 
 ## 0.1.6 — 2026-11-24
 
