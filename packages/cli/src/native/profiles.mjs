@@ -8,7 +8,8 @@ const PROFILE_KEYS = new Set([
     'id', 'label', 'configDir', 'baseUrl', 'keyFile', 'defaultModel', 'match', 'env',
 ]);
 const ID_RE = /^[a-z][a-z0-9-]{1,31}$/;
-const MODEL_RE = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/;
+// Model IDs may carry a context suffix such as `deepseek-flash[1m]`.
+const MODEL_RE = /^[A-Za-z0-9][A-Za-z0-9._:/\[\]-]{0,127}$/;
 const MATCH_RE = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,63}$/;
 const MAX_PROFILES = 8;
 const MAX_MATCH_PATTERNS = 20;

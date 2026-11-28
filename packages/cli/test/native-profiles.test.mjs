@@ -53,6 +53,10 @@ test('valid profiles normalize ids, paths and lowercase model prefixes', (t) => 
     assert.equal(profiles[0].configDir, raw.configDir);
     assert.equal(profiles[0].baseUrl, raw.baseUrl);
     assert.deepEqual(profiles[0].match, ['deepseek-']);
+    const suffixed = validateNativeProfiles(
+        [profile(dir, { defaultModel: 'deepseek-flash[1m]' })], { home },
+    );
+    assert.equal(suffixed[0].defaultModel, 'deepseek-flash[1m]');
 });
 
 test('a missing configDir defaults to home/.claude', (t) => {
