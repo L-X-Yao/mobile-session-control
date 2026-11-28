@@ -200,13 +200,18 @@ remain `NO_DATA`.
 one listing child per config directory, last-assistant-model routing, ambiguous
 sessions expanded once per candidate, per-profile host environments and
 fail-closed key-file checks. Fake-SDK tests cover two exclusive directories,
-one shared directory and an unknown session. Real Kimi and GLM turns remain
-`NO_DATA`; no real provider key was used.
+one shared directory and an unknown session. Real profile turns then passed:
+DeepSeek (P6A), Kimi Code coding plan (`api.kimi.com/coding`,
+`ANTHROPIC_API_KEY`, `kimi-for-coding`) and GLM coding plan
+(`glm-5.4[1m]`). Each forked an active source, returned the expected text,
+left the source transcript unchanged, and rejected a post-close write with 409.
+Real provider HTTP request counts remain `NO_DATA`.
 
 2026-11-28: the profile `env` allow-list was added for provider alias and
 subagent model settings. Tests cover accepted names, rejected credential and
-process-control names, and the profiled host environment. Real-provider
-evidence for those aliases remains `NO_DATA`.
+process-control names, and the profiled host environment. The main real turns
+above exercised the profiles, but alias-specific and subagent behavior remains
+`NO_DATA`.
 
 ## Boundaries
 
@@ -232,6 +237,6 @@ evidence for those aliases remains `NO_DATA`.
   sessions are forked, not hot-attached.
 - The phone does not preload the full native transcript; it starts a new relay
   view and the SDK resumes the conversation. History preload is a later step.
-- Human hands-on phone control and real Kimi/GLM native sessions remain
-  `NO_DATA`; the DeepSeek resume, fork and ADB-driven Android path are covered
-  in the verification section.
+- Human hands-on phone control remains `NO_DATA`; the DeepSeek resume, fork
+  and ADB-driven Android path are covered in the verification section, as are
+  the real DeepSeek, Kimi Code and GLM profile turns.

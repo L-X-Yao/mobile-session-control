@@ -2,7 +2,7 @@
 
 Status: **MVP build.** Kotlin + Jetpack Compose; it talks to the existing
 loopback relay and stores the device/session tokens in
-`EncryptedSharedPreferences` (Android Keystore). A signed `0.2.0` APK/AAB is
+`EncryptedSharedPreferences` (Android Keystore). A signed `0.2.1` APK/AAB is
 attached to the GitHub release.
 
 ## Implemented

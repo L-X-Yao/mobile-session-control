@@ -78,9 +78,8 @@ A production release requires: green CI, CodeQL, Browser E2E and Scorecard; a
 restore drill on the current backup; a clean `npm run precommit`; no open
 high/medium review finding; and an explicit user approval for the tag and push.
 
-`v0.2.0` was published on 2026-11-28 with the 24-hour soak, PWA-specific
-hands-on, provider HTTP counts and iOS checks still `NO_DATA`; that boundary was
-explicitly accepted for a personal pre-release. A `v0.2.1` tag additionally
-requires real Kimi/GLM profile rounds and real-provider evidence for the
-profile alias settings. The source version may be `0.2.1` before those are
-complete, but no tag or release is created.
+`v0.2.1` was published on 2026-11-28 with real DeepSeek, Kimi Code and GLM
+coding-plan profile turns; the 24-hour soak, PWA-specific hands-on, provider
+HTTP counts, iOS checks and alias-specific/subagent behavior remain `NO_DATA`.
+That boundary was explicitly accepted for a personal pre-release. A later
+release needs the remaining evidence, but no tag is created for `NO_DATA`.

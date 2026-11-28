@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.1 — unreleased
+## 0.2.1 — 2026-11-28
 
 - Native service profiles. A `native.profiles` array gives each provider its
   own `CLAUDE_CONFIG_DIR`, `baseUrl`, optional mode-0600 `keyFile`,
@@ -16,7 +16,8 @@
   resolution and fail closed if their permissions change.
 - Native provider IDs include the profile ID when profiled, and labels append
   the profile. Offline tests cover two exclusive directories, one shared
-  directory and an ambiguous session; real Kimi/GLM turns remain `NO_DATA`.
+  directory and an ambiguous session; real DeepSeek, Kimi Code and GLM
+  coding-plan turns passed on 2026-11-28.
 - A profile `env` map accepts only a fixed allow-list: the four
   `ANTHROPIC_DEFAULT_*` model aliases, `CLAUDE_CODE_SUBAGENT_MODEL`, two
   `CLAUDE_CODE_*` limits, the non-essential-traffic switch and three
@@ -27,6 +28,10 @@
   `ANTHROPIC_API_KEY` for the key file. Kimi Code coding-plan keys use
   `ANTHROPIC_API_KEY` and `https://api.kimi.com/coding`; the Direct Moonshot
   and GLM coding-plan endpoints keep the bearer token.
+- Release boundary: DeepSeek, Kimi Code and GLM coding-plan profile turns
+  passed on 2026-11-28. The production 24-hour run, PWA-specific hands-on, real
+  provider HTTP request counts/attestation and iOS Safari remain `NO_DATA`. The
+  0.2.1 Android APK carries the 0.2.0 client code with the version bump.
 
 ## 0.2.0 — 2026-11-26
 
