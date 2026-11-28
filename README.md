@@ -53,16 +53,17 @@ quota.
 |---|---|
 | Relay, session manager, host and Claude adapter | Implemented; tested offline against fake providers |
 | Mobile web client / PWA | Pairing, session list, chat, approvals, Stop, reconnect, installable shell |
-| Native Android client | MVP; signed release APK/AAB at `v0.1.6`; pairing/QR, sessions, chat, approvals, Stop, questions, biometric lock |
+| Native Android client | MVP; signed release APK/AAB at `v0.2.0`; pairing/QR, sessions, chat, approvals, Stop, questions, biometric lock |
 | Native Claude Code session takeover | Experimental; real resume, fork and Android phone control completed on DeepSeek; human hands-on not yet verified; see `docs/NATIVE-SESSIONS.md` |
 | Real-phone and real-provider evidence | Recorded outside the repository |
 | Continuous 24-hour reliability | `NO_DATA` |
 | Push / packaging | UnifiedPush via self-hosted ntfy; Play Store/TWA not implemented |
 
 This is a personal-use build. Real-phone and real-provider evidence is recorded
-outside the repository; the continuous 24-hour claim remains `NO_DATA`. The
-source tree is at version `0.2.0` in preparation; no `v0.2.0` tag or release
-exists, and the latest published Android artifacts remain `v0.1.6`.
+outside the repository; the continuous 24-hour claim remains `NO_DATA`. `v0.2.0`
+was published on 2026-11-28 with the 24-hour, PWA-specific, provider-count and
+iOS checks still `NO_DATA`. The source tree is at version `0.2.1` in
+development; no `v0.2.1` tag exists.
 
 This project does not bundle upstream Happy code; see `NOTICE`. The Claude Agent
 SDK and the Claude Code executable are separately licensed external

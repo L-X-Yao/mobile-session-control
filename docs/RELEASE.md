@@ -1,9 +1,9 @@
 # Release process
 
-Status: `v0.1.6` was published by the workflow with source assets, a signed
-APK/AAB upload and a build-provenance attestation. The source version is
-`0.2.0` in preparation; no `v0.2.0` tag or release exists yet. Signed tags
-remain a local operator action.
+Status: `v0.2.0` was published on 2026-11-28 by the workflow with source
+assets, a signed APK/AAB upload and a build-provenance attestation. The source
+version is `0.2.1` in preparation; no `v0.2.1` tag or release exists yet.
+Signed tags remain a local operator action.
 
 ## Checklist
 
